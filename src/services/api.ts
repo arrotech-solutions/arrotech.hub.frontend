@@ -50,8 +50,21 @@ class ApiService {
   private api: AxiosInstance;
 
   constructor() {
+    // Ensure HTTPS is always used in production
+    const getBaseURL = () => {
+      const envURL = process.env.REACT_APP_API_URL;
+      const defaultURL = 'https://arrotech-hub.onrender.com';
+      
+      // If environment URL is set but uses HTTP, force HTTPS
+      if (envURL) {
+        return envURL.replace(/^http:/, 'https:');
+      }
+      
+      return defaultURL;
+    };
+
     this.api = axios.create({
-      baseURL: process.env.REACT_APP_API_URL || 'https://arrotech-hub.onrender.com',
+      baseURL: getBaseURL(),
       headers: {
         'Content-Type': 'application/json',
       },
