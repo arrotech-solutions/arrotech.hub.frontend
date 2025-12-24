@@ -23,8 +23,8 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "REACT_APP_API_URL=http://localhost:8000 react-scripts build",
-    "build:dev": "REACT_APP_API_URL=http://localhost:8000 react-scripts build",
+    "build": "REACT_APP_API_URL=https://arrotech-hub.fly.dev react-scripts build",
+    "build:dev": "REACT_APP_API_URL=https://arrotech-hub.fly.dev react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -46,5 +46,5 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:8000"
+  "proxy": "https://arrotech-hub.fly.dev"
 } 

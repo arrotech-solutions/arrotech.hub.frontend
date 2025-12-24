@@ -52,7 +52,7 @@ class ApiService {
   constructor() {
     // Ensure HTTPS is always used in production
     const getBaseURL = () => {
-      const defaultURL = 'http://localhost:8000';
+      const defaultURL = 'https://arrotech-hub.fly.dev';
       return defaultURL;
     };
 

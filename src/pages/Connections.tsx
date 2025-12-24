@@ -608,7 +608,7 @@ const Connections: React.FC = () => {
                 <label className="block text-xs text-gray-600 mb-1">APS Redirect URI</label>
                 <input
                   type="text"
-                  value={formData.config?.env?.APS_REDIRECT_URI || 'http://localhost:8000/api/aps/callback/oauth'}
+                  value={formData.config?.env?.APS_REDIRECT_URI || 'https://arrotech-hub.fly.dev/api/aps/callback/oauth'}
                   onChange={(e) => setFormData({
                     ...formData,
                     config: { 
@@ -829,7 +829,7 @@ const Connections: React.FC = () => {
                 <p className="text-xs text-gray-500">Example: {`{
   "APS_CLIENT_ID": "your_client_id_here",
   "APS_CLIENT_SECRET": "your_client_secret_here", 
-  "APS_REDIRECT_URI": "http://localhost:8000/api/aps/callback/oauth"
+  "APS_REDIRECT_URI": "https://arrotech-hub.fly.dev/api/aps/callback/oauth"
 }`}</p>
               )}
               {schema.description && (
@@ -927,7 +927,7 @@ const Connections: React.FC = () => {
           env: {
             APS_CLIENT_ID: '',
             APS_CLIENT_SECRET: '',
-            APS_REDIRECT_URI: 'http://localhost:8000/api/aps/callback/oauth'
+            APS_REDIRECT_URI: 'https://arrotech-hub.fly.dev/api/aps/callback/oauth'
           },
           timeoutMs: 30000,
           maxRetries: 3

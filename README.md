@@ -50,7 +50,7 @@ A modern React TypeScript frontend for the Mini-Hub MCP Server, providing a comp
 ### Prerequisites
 
 - Node.js 16+ and npm
-- Backend server running on `http://localhost:8000`
+- Backend server running on `https://arrotech-hub.fly.dev`
 
 ### Installation
 
@@ -71,7 +71,7 @@ npm start
 Create a `.env` file in the root directory:
 
 ```env
-REACT_APP_API_URL=http://localhost:8000
+REACT_APP_API_URL=https://arrotech-hub.fly.dev
 ```
 
 ## API Integration
