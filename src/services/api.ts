@@ -1,49 +1,49 @@
 import axios, { AxiosInstance } from 'axios';
 import {
-    AgentCreate,
-    AgentResponse,
-    AgentStatusResponse,
-    ApiResponse,
-    APISettings,
-    ChatToolsResponse,
-    Connection,
-    ConnectionCreate,
-    ConnectionPlatform,
-    ConnectionUpdate,
-    ContentCreationResponse,
-    Conversation,
-    ConversationCreate,
-    DashboardSettings,
-    ImageGenerationResponse,
-    IntegrationSettings,
-    LLMProviderResponse,
-    MCPTool,
-    Message,
-    MessageCreate,
-    MpesaPaymentRequest,
-    NotificationSettings,
-    Payment,
-    PaymentVerificationRequest,
-    PDFGenerationResponse,
-    PricingTiers,
-    SecuritySettings,
-    ServerInfo,
-    ServerStatus,
-    ShortLinkResponse,
-    StripeCustomerRequest,
-    StripePaymentRequest,
-    Subscription,
-    ToolInfo,
-    UsageLog,
-    User,
-    UserSettings,
-    UserSettingsUpdate,
-    WebScrapingResponse,
-    // New types for enhanced features
-    Workflow,
-    WorkflowCreateRequest,
-    WorkflowExecuteRequest,
-    WorkflowTemplate
+  AgentCreate,
+  AgentResponse,
+  AgentStatusResponse,
+  ApiResponse,
+  APISettings,
+  ChatToolsResponse,
+  Connection,
+  ConnectionCreate,
+  ConnectionPlatform,
+  ConnectionUpdate,
+  ContentCreationResponse,
+  Conversation,
+  ConversationCreate,
+  DashboardSettings,
+  ImageGenerationResponse,
+  IntegrationSettings,
+  LLMProviderResponse,
+  MCPTool,
+  Message,
+  MessageCreate,
+  MpesaPaymentRequest,
+  NotificationSettings,
+  Payment,
+  PaymentVerificationRequest,
+  PDFGenerationResponse,
+  PricingTiers,
+  SecuritySettings,
+  ServerInfo,
+  ServerStatus,
+  ShortLinkResponse,
+  StripeCustomerRequest,
+  StripePaymentRequest,
+  Subscription,
+  ToolInfo,
+  UsageLog,
+  User,
+  UserSettings,
+  UserSettingsUpdate,
+  WebScrapingResponse,
+  // New types for enhanced features
+  Workflow,
+  WorkflowCreateRequest,
+  WorkflowExecuteRequest,
+  WorkflowTemplate
 } from '../types';
 
 class ApiService {
@@ -52,7 +52,7 @@ class ApiService {
   constructor() {
     // Ensure HTTPS is always used in production
     const getBaseURL = () => {
-      const defaultURL = 'https://arrotech-hub.onrender.com';
+      const defaultURL = 'http://localhost:8000';
       return defaultURL;
     };
 
@@ -600,6 +600,32 @@ class ApiService {
       parameters,
       context
     });
+    return response.data;
+  }
+
+  async getWorkflowExecution(executionId: number): Promise<ApiResponse<any>> {
+    const response = await this.api.get(`/workflows/executions/${executionId}`);
+    return response.data;
+  }
+
+  async getAllWorkflowExecutions(userId?: number): Promise<ApiResponse<any[]>> {
+    const params = userId ? { user_id: userId } : {};
+    const response = await this.api.get('/workflows/executions', { params });
+    return response.data;
+  }
+
+  async getWorkflowStepExecutions(executionId: number): Promise<ApiResponse<any[]>> {
+    const response = await this.api.get(`/workflows/executions/${executionId}/steps`);
+    return response.data;
+  }
+
+  async retryWorkflowStep(stepExecutionId: number): Promise<ApiResponse<any>> {
+    const response = await this.api.post(`/workflows/step-executions/${stepExecutionId}/retry`);
+    return response.data;
+  }
+
+  async cancelWorkflowExecution(executionId: number): Promise<ApiResponse<any>> {
+    const response = await this.api.post(`/workflows/executions/${executionId}/cancel`);
     return response.data;
   }
 
@@ -1459,21 +1485,15 @@ class ApiService {
 
   // ACC Ambient Agent endpoints
   async startACCAmbientAgent(projectId: string, callbackUrl: string): Promise<ApiResponse<any>> {
-    const response = await this.api.post('/mcp/call', {
-      name: 'acc_ambient_agent_start',
-      arguments: {
-        project_id: projectId,
-        callback_url: callbackUrl
-      }
+    const response = await this.api.post('/agents/acc-ambient/start', {
+      project_id: projectId,
+      callback_url: callbackUrl
     });
     return response.data;
   }
 
   async stopACCAmbientAgent(): Promise<ApiResponse<any>> {
-    const response = await this.api.post('/mcp/call', {
-      name: 'acc_ambient_agent_stop',
-      arguments: {}
-    });
+    const response = await this.api.post('/agents/acc-ambient/stop');
     return response.data;
   }
 
@@ -1512,7 +1532,7 @@ class ApiService {
   }
 
   async getACCWebhookStatus(): Promise<ApiResponse<any>> {
-    const response = await this.api.get('/webhooks/acc/status');
+    const response = await this.api.get('/agents/acc-ambient/status');
     return response.data;
   }
 

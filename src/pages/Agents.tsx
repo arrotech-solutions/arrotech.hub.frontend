@@ -67,14 +67,27 @@ const Agents: React.FC = () => {
     loadAgents();
     loadWorkflows();
     loadACCData();
+
+    // Set up periodic status polling for ACC agent
+    const statusInterval = setInterval(() => {
+      loadACCData();
+    }, 30000); // Check every 30 seconds
+
+    return () => clearInterval(statusInterval);
   }, []);
 
   const loadACCData = async () => {
     try {
       // Load ACC ambient agent status
+      console.log('🔄 Loading ACC ambient agent status...');
       const statusRes = await apiService.getACCWebhookStatus();
+      console.log('📊 ACC status response:', statusRes);
+      
       if (statusRes.success) {
+        console.log('✅ ACC status data:', statusRes.data);
         setAccStatus(statusRes.data);
+      } else {
+        console.log('❌ ACC status failed:', statusRes);
       }
 
       // Load ACC analytics
@@ -214,12 +227,19 @@ const Agents: React.FC = () => {
     }
 
     try {
+      console.log('🚀 Starting ACC ambient agent with:', { projectId: projectId.trim(), callbackUrl });
       const response = await apiService.startACCAmbientAgent(projectId.trim(), callbackUrl);
+      console.log('🚀 Start ACC agent response:', response);
+      
       if (response.success) {
         toast.success('ACC Ambient Agent started successfully');
         setShowACCModal(false);
         setProjectId(''); // Clear the form
-        loadACCData();
+        
+        // Refresh status with a slight delay to allow backend to update
+        setTimeout(() => loadACCData(), 1000);
+      } else {
+        toast.error(response.message || 'Failed to start ACC ambient agent');
       }
     } catch (error) {
       console.error('Error starting ACC agent:', error);
@@ -229,10 +249,17 @@ const Agents: React.FC = () => {
 
   const handleStopACCAgent = async () => {
     try {
+      console.log('⏹️ Stopping ACC ambient agent...');
       const response = await apiService.stopACCAmbientAgent();
+      console.log('⏹️ Stop ACC agent response:', response);
+      
       if (response.success) {
         toast.success('ACC Ambient Agent stopped successfully');
-        loadACCData();
+        
+        // Refresh status with a slight delay to allow backend to update
+        setTimeout(() => loadACCData(), 1000);
+      } else {
+        toast.error(response.message || 'Failed to stop ACC ambient agent');
       }
     } catch (error) {
       console.error('Error stopping ACC agent:', error);
@@ -546,6 +573,12 @@ const Agents: React.FC = () => {
               </div>
             </div>
             <div className="flex items-center space-x-3">
+              {/* Debug info */}
+              <div className="text-xs text-gray-500 mr-2">
+                Status: {accStatus?.is_active ? '✅ Active' : '❌ Inactive'} 
+                {accStatus?.status && ` (${accStatus.status})`}
+              </div>
+              
               {accStatus?.is_active ? (
                 <button
                   onClick={handleStopACCAgent}
@@ -577,8 +610,17 @@ const Agents: React.FC = () => {
                 {accStatus?.is_active ? 'Active' : 'Inactive'}
               </p>
               <p className="text-xs text-gray-500">
-                {accStatus?.project_id ? `Project: ${accStatus.project_id.slice(0, 8)}...` : 'No project selected'}
+                {accStatus?.components?.issue_monitoring?.project_id 
+                  ? `Project: ${accStatus.components.issue_monitoring.project_id.slice(0, 8)}...` 
+                  : accStatus?.project_id 
+                    ? `Project: ${accStatus.project_id.slice(0, 8)}...`
+                    : 'No project selected'}
               </p>
+              {accStatus?.uptime_seconds && (
+                <p className="text-xs text-green-600">
+                  Uptime: {Math.floor(accStatus.uptime_seconds / 60)}m
+                </p>
+              )}
             </div>
             
             <div className="bg-white rounded-lg p-4 border border-orange-200/50">
@@ -586,7 +628,9 @@ const Agents: React.FC = () => {
                 <HardHat className="w-4 h-4 text-orange-600" />
                 <span className="text-sm font-medium text-gray-700">Issues Monitored</span>
               </div>
-              <p className="text-lg font-bold text-gray-900">{accStatus?.issues_processed || 0}</p>
+              <p className="text-lg font-bold text-gray-900">
+                {accStatus?.components?.issue_monitoring?.issues_processed || accStatus?.issues_processed || 0}
+              </p>
               <p className="text-xs text-gray-500">Total processed</p>
             </div>
             
@@ -595,7 +639,9 @@ const Agents: React.FC = () => {
                 <GitBranch className="w-4 h-4 text-yellow-600" />
                 <span className="text-sm font-medium text-gray-700">Duplicates</span>
               </div>
-              <p className="text-lg font-bold text-gray-900">{accStatus?.duplicates_detected || 0}</p>
+              <p className="text-lg font-bold text-gray-900">
+                {accStatus?.components?.issue_monitoring?.duplicates_detected || accStatus?.duplicates_detected || 0}
+              </p>
               <p className="text-xs text-gray-500">Duplicates detected</p>
             </div>
             
@@ -604,7 +650,9 @@ const Agents: React.FC = () => {
                 <AlertTriangle className="w-4 h-4 text-red-600" />
                 <span className="text-sm font-medium text-gray-700">Incomplete</span>
               </div>
-              <p className="text-lg font-bold text-gray-900">{accStatus?.incomplete_issues || 0}</p>
+              <p className="text-lg font-bold text-gray-900">
+                {accStatus?.components?.issue_monitoring?.incomplete_issues || accStatus?.incomplete_issues || 0}
+              </p>
               <p className="text-xs text-gray-500">Missing information</p>
             </div>
           </div>

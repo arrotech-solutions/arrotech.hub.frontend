@@ -142,16 +142,17 @@ export interface Workflow {
   id: number;
   name: string;
   description: string;
-  status: 'draft' | 'active' | 'paused' | 'completed';
+  status: 'draft' | 'active' | 'inactive' | 'archived';
   version: number;
   is_template: boolean;
-  trigger_type: string;
+  trigger_type: 'manual' | 'scheduled' | 'event' | 'webhook';
   trigger_config?: Record<string, any>;
   variables?: Record<string, any>;
   workflow_metadata?: Record<string, any>;
   created_at: string;
   updated_at?: string;
   steps: WorkflowStep[];
+  executions?: WorkflowExecution[];
 }
 
 export interface WorkflowStep {
@@ -160,18 +161,28 @@ export interface WorkflowStep {
   tool_name: string;
   tool_parameters?: Record<string, any>;
   description?: string;
-  condition?: Record<string, any>;
-  retry_config?: Record<string, any>;
+  condition?: WorkflowCondition;
+  retry_config?: {
+    max_retries: number;
+    retry_delay: number;
+  };
   timeout?: number;
   created_at: string;
   updated_at?: string;
+}
+
+export interface WorkflowCondition {
+  type: 'if';
+  field: string;
+  operator: 'equals' | 'not_equals' | 'contains' | 'not_contains' | 'greater_than' | 'less_than' | 'exists' | 'not_exists';
+  value: any;
 }
 
 export interface WorkflowExecution {
   id: number;
   workflow_id: number;
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
-  trigger_type: string;
+  trigger_type: 'manual' | 'scheduled' | 'event' | 'webhook';
   trigger_data?: Record<string, any>;
   input_data?: Record<string, any>;
   output_data?: Record<string, any>;
@@ -179,6 +190,7 @@ export interface WorkflowExecution {
   started_at?: string;
   completed_at?: string;
   created_at: string;
+  step_executions?: WorkflowStepExecution[];
 }
 
 export interface WorkflowStepExecution {
@@ -206,10 +218,58 @@ export interface WorkflowExecuteRequest {
 }
 
 export interface WorkflowTemplate {
-  id: string;
   name: string;
   description: string;
-  steps: string[];
+  steps: WorkflowTemplateStep[];
+}
+
+export interface WorkflowTemplateStep {
+  step_number: number;
+  tool_name: string;
+  parameters: Record<string, any>;
+  description: string;
+  condition?: WorkflowCondition;
+  retry_config?: {
+    max_retries: number;
+    retry_delay: number;
+  };
+  timeout?: number;
+}
+
+export interface WorkflowExecutionResponse {
+  id: number;
+  workflow_id: number;
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  trigger_type: 'manual' | 'scheduled' | 'event' | 'webhook';
+  input_data?: Record<string, any>;
+  output_data?: Record<string, any>;
+  error_message?: string;
+  started_at?: string;
+  completed_at?: string;
+  created_at: string;
+}
+
+export interface ConditionTestRequest {
+  condition: WorkflowCondition;
+  context: Record<string, any>;
+}
+
+export interface ConditionTestResponse {
+  result: boolean;
+  evaluated_value: any;
+  expected_value: any;
+  operator: string;
+}
+
+export interface VariableSubstitutionRequest {
+  parameters: Record<string, any>;
+  context: Record<string, any>;
+}
+
+export interface VariableSubstitutionResponse {
+  original_parameters: Record<string, any>;
+  substituted_parameters: Record<string, any>;
+  substitutions_made: string[];
 }
 
 // Agent Types
@@ -545,7 +605,7 @@ export interface WorkflowBuilder {
   description: string;
   triggers: WorkflowTrigger[];
   steps: WorkflowBuilderStep[];
-  conditions: WorkflowCondition[];
+  conditions: WorkflowBuilderCondition[];
   status: 'draft' | 'active' | 'paused';
   execution_count: number;
   success_count: number;
@@ -567,7 +627,7 @@ export interface WorkflowBuilderStep {
   order: number;
 }
 
-export interface WorkflowCondition {
+export interface WorkflowBuilderCondition {
   id: string;
   type: string;
   config: Record<string, any>;
@@ -1000,7 +1060,6 @@ export interface PaginatedResponse<T> {
   per_page: number;
   total_pages: number;
 }
-
 export interface ServerStatus {
   status: string;
   version: string;
@@ -1272,13 +1331,34 @@ export interface ACCIssue {
 
 export interface ACCAmbientAgentStatus {
   is_active: boolean;
+  status?: string;
+  started_at?: string;
+  uptime_seconds?: number;
   project_id?: string;
   callback_url?: string;
-  webhook_status: 'registered' | 'unregistered' | 'error';
+  webhook_status?: 'registered' | 'unregistered' | 'error';
   last_activity?: string;
-  issues_processed: number;
-  duplicates_detected: number;
-  incomplete_issues: number;
+  issues_processed?: number;
+  duplicates_detected?: number;
+  incomplete_issues?: number;
+  components?: {
+    issue_monitoring?: {
+      project_id?: string;
+      callback_url?: string;
+      webhook_status?: string;
+      issues_processed?: number;
+      duplicates_detected?: number;
+      incomplete_issues?: number;
+      details?: any;
+    };
+    event_bus?: {
+      status?: string;
+      details?: any;
+    };
+    weekly_summary?: Record<string, any>;
+  };
+  configuration?: Record<string, any>;
+  error?: string;
 }
 
 export interface ACCAnalytics {

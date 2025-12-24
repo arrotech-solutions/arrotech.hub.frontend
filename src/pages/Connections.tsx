@@ -1,28 +1,28 @@
 import {
-    Activity,
-    AlertCircle,
-    AlertTriangle,
-    BarChart3,
-    CheckCircle,
-    Clock,
-    Database,
-    Edit,
-    FileText,
-    Globe,
-    Grid,
-    List,
-    MessageCircle,
-    MoreVertical,
-    Pause,
-    Plus,
-    RefreshCw,
-    Search,
-    Settings,
-    TestTube,
-    Trash2,
-    Users,
-    XCircle,
-    Zap
+  Activity,
+  AlertCircle,
+  AlertTriangle,
+  BarChart3,
+  CheckCircle,
+  Clock,
+  Database,
+  Edit,
+  FileText,
+  Globe,
+  Grid,
+  List,
+  MessageCircle,
+  MoreVertical,
+  Pause,
+  Plus,
+  RefreshCw,
+  Search,
+  Settings,
+  TestTube,
+  Trash2,
+  Users,
+  XCircle,
+  Zap
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -57,6 +57,7 @@ const Connections: React.FC = () => {
     inactive: 0,
     error: 0
   });
+  const [expandedPlatforms, setExpandedPlatforms] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchConnections();
@@ -406,16 +407,58 @@ const Connections: React.FC = () => {
     return colorMap[platformId] || colorMap.default;
   };
 
-  const renderPlatformCapabilities = (capabilities: PlatformCapability[]) => {
+  const togglePlatformExpansion = (platformId: string) => {
+    const newExpanded = new Set(expandedPlatforms);
+    if (newExpanded.has(platformId)) {
+      newExpanded.delete(platformId);
+    } else {
+      newExpanded.add(platformId);
+    }
+    setExpandedPlatforms(newExpanded);
+  };
+
+  const renderPlatformCapabilities = (capabilities: PlatformCapability[], platformId: string, isExpanded: boolean) => {
+    const maxCapabilities = 3;
+    const displayCapabilities = isExpanded ? capabilities : capabilities.slice(0, maxCapabilities);
+    const hasMore = capabilities.length > maxCapabilities;
+
     return (
       <div className="space-y-2">
-        {capabilities.map((capability, index) => (
-          <div key={index} className="flex items-center space-x-2 text-sm">
-            <Zap className="w-3 h-3 text-blue-600" />
-            <span className="font-medium">{capability.name}:</span>
-            <span className="text-gray-600">{capability.description}</span>
+        {displayCapabilities.map((capability, index) => (
+          <div key={index} className="flex items-start space-x-2 text-sm">
+            <Zap className="w-3 h-3 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <span className="font-medium">{capability.name}:</span>
+              <span className="text-gray-600 ml-1">{capability.description}</span>
+            </div>
           </div>
         ))}
+        {hasMore && !isExpanded && (
+          <div className="text-xs text-gray-500">
+            +{capabilities.length - maxCapabilities} more capabilities
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderPlatformFeatures = (features: string[], platformId: string, isExpanded: boolean) => {
+    const maxFeatures = 6;
+    const displayFeatures = isExpanded ? features : features.slice(0, maxFeatures);
+    const hasMore = features.length > maxFeatures;
+
+    return (
+      <div className="flex flex-wrap gap-1">
+        {displayFeatures.map((feature, index) => (
+          <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+            {feature}
+          </span>
+        ))}
+        {hasMore && !isExpanded && (
+          <span className="px-2 py-1 bg-blue-50 text-blue-600 text-xs rounded border border-blue-200">
+            +{features.length - maxFeatures} more
+          </span>
+        )}
       </div>
     );
   };
@@ -565,7 +608,7 @@ const Connections: React.FC = () => {
                 <label className="block text-xs text-gray-600 mb-1">APS Redirect URI</label>
                 <input
                   type="text"
-                  value={formData.config?.env?.APS_REDIRECT_URI || 'https://arrotech-hub.onrender.com/api/aps/callback/oauth'}
+                  value={formData.config?.env?.APS_REDIRECT_URI || 'http://localhost:8000/api/aps/callback/oauth'}
                   onChange={(e) => setFormData({
                     ...formData,
                     config: { 
@@ -786,7 +829,7 @@ const Connections: React.FC = () => {
                 <p className="text-xs text-gray-500">Example: {`{
   "APS_CLIENT_ID": "your_client_id_here",
   "APS_CLIENT_SECRET": "your_client_secret_here", 
-  "APS_REDIRECT_URI": "https://arrotech-hub.onrender.com/api/aps/callback/oauth"
+  "APS_REDIRECT_URI": "http://localhost:8000/api/aps/callback/oauth"
 }`}</p>
               )}
               {schema.description && (
@@ -884,7 +927,7 @@ const Connections: React.FC = () => {
           env: {
             APS_CLIENT_ID: '',
             APS_CLIENT_SECRET: '',
-            APS_REDIRECT_URI: 'https://arrotech-hub.onrender.com/api/aps/callback/oauth'
+            APS_REDIRECT_URI: 'http://localhost:8000/api/aps/callback/oauth'
           },
           timeoutMs: 30000,
           maxRetries: 3
@@ -1266,58 +1309,89 @@ const Connections: React.FC = () => {
             </p>
           </div>
         )}
-      </div>
 
-      {/* Available Platforms */}
-      <div>
-        <h2 className="available-platforms-title text-xl font-semibold text-gray-900 mb-6">Available Platforms</h2>
+        {/* Available Platforms */}
+        <div className="mt-12">
+          <h2 className="available-platforms-title text-xl font-semibold text-gray-900 mb-6">Available Platforms</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {platforms.map((platform) => (
-            <div key={platform.id} className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-200 hover:border-blue-300 group">
-              <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
-                      {getPlatformIcon(platform.id)}
+          {platforms.map((platform) => {
+            const isExpanded = expandedPlatforms.has(platform.id);
+            const hasExpandableContent = 
+              platform.features.length > 6 || 
+              (platform.capabilities && platform.capabilities.length > 3);
+
+            return (
+              <div key={platform.id} className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-200 hover:border-blue-300 group flex flex-col h-full">
+                <div className="p-6 flex flex-col flex-1">
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center space-x-3 min-w-0 flex-1">
+                      <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex-shrink-0">
+                        {getPlatformIcon(platform.id)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors truncate">{platform.name}</h3>
+                        <p className="text-sm text-gray-600 line-clamp-2">{platform.description}</p>
+                      </div>
                     </div>
+                    <div className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ml-2 ${getPlatformColor(platform.id)}`}>
+                      {platform.id}
+                    </div>
+                  </div>
+
+                  {/* Content Area - Flexible */}
+                  <div className="flex-1 space-y-4">
+                    {/* Features */}
                     <div>
-                      <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">{platform.name}</h3>
-                      <p className="text-sm text-gray-600">{platform.description}</p>
+                      <h4 className="text-sm font-medium text-gray-900 mb-2">Features:</h4>
+                      {renderPlatformFeatures(platform.features, platform.id, isExpanded)}
                     </div>
+
+                    {/* Capabilities */}
+                    {platform.capabilities && platform.capabilities.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-900 mb-2">Capabilities:</h4>
+                        {renderPlatformCapabilities(platform.capabilities, platform.id, isExpanded)}
+                      </div>
+                    )}
                   </div>
-                  <div className={`px-2 py-1 rounded-full text-xs font-medium ${getPlatformColor(platform.id)}`}>
-                    {platform.id}
+
+                  {/* Actions Area - Always at bottom */}
+                  <div className="mt-4 space-y-3">
+                    {/* Show More/Less Button */}
+                    {hasExpandableContent && (
+                      <button
+                        onClick={() => togglePlatformExpansion(platform.id)}
+                        className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-sm text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-all duration-200"
+                      >
+                        {isExpanded ? (
+                          <>
+                            <span>Show Less</span>
+                            <AlertTriangle className="w-3 h-3 rotate-180" />
+                          </>
+                        ) : (
+                          <>
+                            <span>Show More</span>
+                            <AlertTriangle className="w-3 h-3" />
+                          </>
+                        )}
+                      </button>
+                    )}
+
+                    {/* Connect Button */}
+                    <button
+                      onClick={() => openCreateModal(platform)}
+                      className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-sm"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Connect {platform.name}</span>
+                    </button>
                   </div>
                 </div>
-
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium text-gray-900 mb-2">Features:</h4>
-                  <div className="flex flex-wrap gap-1">
-                    {platform.features.map((feature, index) => (
-                      <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                        {feature}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {platform.capabilities && platform.capabilities.length > 0 && (
-                  <div className="mb-4">
-                    <h4 className="text-sm font-medium text-gray-900 mb-2">Capabilities:</h4>
-                    {renderPlatformCapabilities(platform.capabilities)}
-                  </div>
-                )}
-
-                <button
-                  onClick={() => openCreateModal(platform)}
-                  className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-sm"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Connect {platform.name}</span>
-                </button>
               </div>
-            </div>
-          ))}
+            );
+          })}
+        </div>
         </div>
       </div>
 
