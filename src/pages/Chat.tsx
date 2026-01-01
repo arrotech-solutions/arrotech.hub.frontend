@@ -32,7 +32,7 @@ const Chat: React.FC<ChatProps> = () => {
   const [showNewConversationModal, setShowNewConversationModal] = useState(false);
   const [newConversationTitle, setNewConversationTitle] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
-  const [showDetailedResults, setShowDetailedResults] = useState(true);
+  const [showDetailedResults] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [editingConversation, setEditingConversation] = useState<number | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
@@ -85,6 +85,7 @@ const Chat: React.FC<ChatProps> = () => {
     loadConversations();
     loadProviders();
     loadTools();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -3104,27 +3105,6 @@ const Chat: React.FC<ChatProps> = () => {
     
     // Default icon for unknown tools
     return <Zap className="w-4 h-4" />;
-  };
-
-  // Helper function to extract data from different response structures
-  const extractToolData = (tool: any) => {
-    // Try different possible data locations
-    if (tool.result?.data) {
-      return tool.result.data;
-    }
-    if (tool.result?.result) {
-      return tool.result.result;
-    }
-    if (tool.result?.response) {
-      return tool.result.response;
-    }
-    if (tool.result?.content) {
-      return tool.result.content;
-    }
-    if (tool.result?.message) {
-      return { message: tool.result.message };
-    }
-    return null;
   };
 
   return (

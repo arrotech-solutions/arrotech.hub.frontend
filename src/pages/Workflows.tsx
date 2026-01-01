@@ -192,25 +192,6 @@ const Workflows: React.FC = () => {
     }
   };
 
-  const handleExecuteWorkflow = async () => {
-    try {
-      if (!executingWorkflow) return;
-      
-      const response = await apiService.executeWorkflow(executingWorkflow.id, executeData);
-      if (response.success) {
-        toast.success('Workflow executed successfully');
-        setShowExecuteModal(false);
-        setExecuteData({ workflow_id: 0, input_data: {} });
-        setExecutingWorkflow(null);
-        loadWorkflows();
-        loadExecutions();
-      }
-    } catch (error) {
-      console.error('Error executing workflow:', error);
-      toast.error('Failed to execute workflow');
-    }
-  };
-
   const handleViewExecution = async (execution: WorkflowExecution) => {
     setSelectedExecution(execution);
     await loadStepExecutions(execution.id);
