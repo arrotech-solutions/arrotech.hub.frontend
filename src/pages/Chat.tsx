@@ -1792,7 +1792,7 @@ const Chat: React.FC<ChatProps> = () => {
 
   // Add a component to display raw JSON data for developers
   const renderRawData = (message: Message) => {
-    if (!message.tools_called || !showRawData) return null;
+    if (!message.tools_called) return null;
 
     const rawDataElements: JSX.Element[] = [];
 

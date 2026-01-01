@@ -1,4 +1,3 @@
-import React, { useEffect, useState } from 'react';
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -10,6 +9,7 @@ import {
   TrendingUp,
   Wallet,
 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import apiService from '../services/api';
 import { CreatorEarnings } from '../types';
 

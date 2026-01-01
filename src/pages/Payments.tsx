@@ -62,7 +62,7 @@ const Payments: React.FC = () => {
 
   useEffect(() => {
     const totalPayments = payments.length;
-    const successfulPayments = payments.filter(p => p.status === 'completed' || p.status === 'success').length;
+    const successfulPayments = payments.filter(p => p.status === 'completed').length;
     const failedPayments = payments.filter(p => p.status === 'failed').length;
     const pendingPayments = payments.filter(p => p.status === 'pending').length;
     const totalAmount = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
@@ -73,7 +73,7 @@ const Payments: React.FC = () => {
         const now = new Date();
         return paymentDate.getMonth() === now.getMonth() && 
                paymentDate.getFullYear() === now.getFullYear() &&
-               (p.status === 'completed' || p.status === 'success');
+               p.status === 'completed';
       })
       .reduce((sum, p) => sum + (p.amount || 0), 0);
     const averagePayment = totalPayments > 0 ? totalAmount / totalPayments : 0;
