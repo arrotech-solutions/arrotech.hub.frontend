@@ -102,6 +102,7 @@ const ExecuteWorkflowModal: React.FC<ExecuteWorkflowModalProps> = ({
       setJsonInput(JSON.stringify(defaults, null, 2));
       setJsonError(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, workflow.id]);
 
   const handleFieldChange = (name: string, value: any) => {

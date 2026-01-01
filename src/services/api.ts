@@ -50,10 +50,12 @@ class ApiService {
   private api: AxiosInstance;
 
   constructor() {
-    // Ensure HTTPS is always used in production
+    // Use production URL or fallback to environment variable
     const getBaseURL = () => {
-      const defaultURL = 'http://localhost:8000';
-      return defaultURL;
+      const envURL = process.env.REACT_APP_API_URL;
+      if (envURL) return envURL;
+      // Default to production API
+      return 'https://mini-hub.fly.dev';
     };
 
     this.api = axios.create({

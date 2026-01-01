@@ -657,7 +657,6 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Start tutorial for current page only
   const startPageTutorial = useCallback((page?: string) => {
-    const targetPage = page || currentPage;
     if (page && page !== currentPage) {
       navigate(pageConfig[page] || '/');
     }
@@ -676,24 +675,37 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       
       // Find next page with tutorials
       const currentOrder = currentPageSteps[currentStepIndex]?.order || 0;
-      const nextStep = tutorialSteps.find(step => step.order > currentOrder);
+      const nextStepData = tutorialSteps.find(step => step.order > currentOrder);
       
-      if (nextStep && nextStep.page !== currentPage) {
+      if (nextStepData && nextStepData.page !== currentPage) {
         // Navigate to next page
-        const nextRoute = pageConfig[nextStep.page];
+        const nextRoute = pageConfig[nextStepData.page];
         if (nextRoute) {
           setCurrentStepIndex(0);
           navigate(nextRoute);
         }
       } else {
         // No more pages, complete tutorial
-        completeTutorial();
+        setIsActive(false);
+        setTutorialMode('none');
+        localStorage.setItem('tutorial_completed', 'true');
+        setIsCompleted(true);
+        
+        // Mark all pages as complete
+        const allComplete: PageTutorialStatus = {};
+        availablePages.forEach(page => {
+          allComplete[page] = true;
+        });
+        savePageStatus(allComplete);
       }
     } else {
       // Page tutorial mode - just complete this page
-      completePageTutorial();
+      const newStatus = { ...pageCompletionStatus, [currentPage]: true };
+      savePageStatus(newStatus);
+      setIsActive(false);
+      setTutorialMode('none');
     }
-  }, [currentStepIndex, currentPageSteps, currentPage, tutorialMode, pageCompletionStatus, savePageStatus, navigate]);
+  }, [currentStepIndex, currentPageSteps, currentPage, tutorialMode, pageCompletionStatus, savePageStatus, navigate, availablePages]);
 
   const previousStep = useCallback(() => {
     if (currentStepIndex > 0) {

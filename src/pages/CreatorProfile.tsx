@@ -17,10 +17,7 @@ import {
   Star,
   Twitter,
   User,
-  UserMinus,
-  UserPlus,
   Users,
-  X,
   Zap,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -43,7 +40,7 @@ const CreatorProfile: React.FC = () => {
   const [followingCount, setFollowingCount] = useState(0);
   const [followingList, setFollowingList] = useState<Following[]>([]);
   const [activityFeed, setActivityFeed] = useState<ActivityFeedItem[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'following' | 'activity'>('overview');
+  const [, setActiveTab] = useState<'overview' | 'following' | 'activity'>('overview');
   
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -63,6 +60,7 @@ const CreatorProfile: React.FC = () => {
     loadTopCreators();
     loadFollowerStats();
     loadActivityFeed();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadFollowerStats = async () => {

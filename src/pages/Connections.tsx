@@ -31,7 +31,7 @@ import apiService from '../services/api';
 import { Connection, ConnectionCreate, ConnectionPlatform, PlatformCapability } from '../types';
 
 const Connections: React.FC = () => {
-  const { user } = useAuth();
+  useAuth();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [platforms, setPlatforms] = useState<ConnectionPlatform[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,11 +46,9 @@ const Connections: React.FC = () => {
   const [testingConnection, setTestingConnection] = useState<number | null>(null);
   const [syncingConnection, setSyncingConnection] = useState<number | null>(null);
   const [oauthInProgress, setOauthInProgress] = useState<number | null>(null);
-  const [showPlatformDetails, setShowPlatformDetails] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [showFilters, setShowFilters] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
     active: 0,
@@ -363,7 +361,8 @@ const Connections: React.FC = () => {
 
       // Transport-aware rendering for mcp_remote
       const isMcpRemote = platform.id === 'mcp_remote';
-      const transport = isMcpRemote ? (formData.config['transport'] || platform.config_schema?.properties?.transport?.default || 'http') : undefined;
+      // Note: transport value is accessed via formData.config['transport'] in render
+      void isMcpRemote; // Mark as intentionally unused here
 
       switch (fieldType) {
         case 'string':

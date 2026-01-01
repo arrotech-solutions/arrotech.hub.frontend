@@ -6,7 +6,7 @@ import apiService from '../services/api';
 import { MCPTool, ToolInfo } from '../types';
 
 const MCPTools: React.FC = () => {
-  const { user } = useAuth();
+  useAuth();
   const [tools, setTools] = useState<(MCPTool | ToolInfo)[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTool, setSelectedTool] = useState<MCPTool | ToolInfo | null>(null);
@@ -16,14 +16,15 @@ const MCPTools: React.FC = () => {
   const [toolParams, setToolParams] = useState<Record<string, any>>({});
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'all' | 'dynamic' | 'user'>('all');
+  const [, setActiveTab] = useState<'all' | 'dynamic' | 'user'>('all');
   const [categories, setCategories] = useState<string[]>(['all']);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingStatus, setStreamingStatus] = useState<string>('');
-  const [streamingResult, setStreamingResult] = useState<any>(null);
+  const [, setStreamingResult] = useState<any>(null);
 
   useEffect(() => {
     fetchTools();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchTools = async () => {
@@ -96,40 +97,6 @@ const MCPTools: React.FC = () => {
     setShowExecuteModal(true);
   };
 
-  const toolIcons: Record<string, string> = {
-    // Existing tools
-    slack_team_communication: '💬',
-    slack_team_management: '👥',
-    slack_file_management: '📁',
-    slack_reactions: '👍',
-    slack_search: '🔍',
-    slack_user_management: '👤',
-    slack_pins: '📌',
-    // New Slack tools
-    slack_ai_agents: '🤖',
-    slack_file_operations: '📂',
-    slack_link_management: '🔗',
-    slack_workflows: '⚙️',
-    slack_webhooks: '🌐',
-    slack_user_context: '👤',
-    slack_advanced_features: '✨',
-    slack_admin_tools: '🛠️',
-    slack_channel_analytics: '📊',
-    slack_search_discovery: '🔎',
-    slack_workspace_management: '🏢',
-    // Other tools
-    hubspot_contact_operations: '👥',
-    hubspot_deal_management: '💰',
-    hubspot_analytics: '📈',
-    ga4_analytics_dashboard: '📊',
-    whatsapp_messaging: '📱',
-    file_management: '📁',
-    web_tools: '🌐',
-    content_creation: '✍️',
-    payment_processing: '💳',
-    social_media_tools: '📱'
-  };
-
   const getToolIcon = (toolName: string) => {
     const iconMap: Record<string, string> = {
       // Marketing Tools
@@ -190,40 +157,6 @@ const MCPTools: React.FC = () => {
     };
     
     return iconMap[toolName] || iconMap.default;
-  };
-
-  const toolDescriptions: Record<string, string> = {
-    // Existing Slack tools
-    slack_team_communication: 'Send messages and manage team communication',
-    slack_team_management: 'Manage Slack teams, channels, and members',
-    slack_file_management: 'Upload and manage files in Slack',
-    slack_reactions: 'Add reactions to Slack messages',
-    slack_search: 'Search for messages and content in Slack',
-    slack_user_management: 'Get user information and list workspace users',
-    slack_pins: 'Pin messages and get pinned content',
-    // New Slack tools
-    slack_ai_agents: 'Execute Slack commands and manage AI agent interactions',
-    slack_file_operations: 'Advanced file operations and management in Slack',
-    slack_link_management: 'Manage and track links shared in Slack channels',
-    slack_workflows: 'Execute and manage Slack workflows and automation',
-    slack_webhooks: 'Send messages via Slack incoming webhooks',
-    slack_user_context: 'Read user profiles and manage user context',
-    slack_advanced_features: 'Advanced Slack features including custom formatting',
-    slack_admin_tools: 'Admin tools for managing user groups and workspace settings',
-    slack_channel_analytics: 'Read channel history and get analytics data',
-    slack_search_discovery: 'Advanced search capabilities for messages and files',
-    slack_workspace_management: 'Manage workspace settings and team information',
-    // Other tools
-    hubspot_contact_operations: 'Manage HubSpot contacts and leads',
-    hubspot_deal_management: 'Manage HubSpot deals and opportunities',
-    hubspot_analytics: 'Get HubSpot analytics and reports',
-    ga4_analytics_dashboard: 'Get Google Analytics 4 data and insights',
-    whatsapp_messaging: 'Send WhatsApp messages and media',
-    file_management: 'Upload, download, and manage files',
-    web_tools: 'Web scraping and content extraction',
-    content_creation: 'Generate content and creative assets',
-    payment_processing: 'Process payments and transactions',
-    social_media_tools: 'Manage social media accounts and posts'
   };
 
   const getToolDescription = (toolName: string) => {

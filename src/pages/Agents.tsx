@@ -1,22 +1,18 @@
 import {
     Activity,
     AlertCircle,
-    AlertTriangle,
     BarChart3,
     Bot,
     CheckCircle,
     ChevronDown,
     ChevronRight,
     Clock,
-    Copy,
     Cpu,
     Edit,
     Eye,
     Filter,
-    GitBranch,
     Grid,
     HardDrive,
-    HardHat,
     List,
     MoreVertical,
     Pause,
@@ -25,9 +21,7 @@ import {
     Search,
     Settings,
     Share2,
-    Shield,
     Trash2,
-    Users,
     XCircle,
     Zap
 } from 'lucide-react';
@@ -228,27 +222,6 @@ const Agents: React.FC = () => {
       default:
         return <AlertCircle className="w-4 h-4" />;
     }
-  };
-
-  const getStatusBgColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-green-50 border-green-200';
-      case 'paused':
-        return 'bg-yellow-50 border-yellow-200';
-      case 'completed':
-        return 'bg-blue-50 border-blue-200';
-      case 'error':
-        return 'bg-red-50 border-red-200';
-      default:
-        return 'bg-gray-50 border-gray-200';
-    }
-  };
-
-  const getPerformanceColor = (metric: number, threshold: number = 80) => {
-    if (metric >= threshold) return 'text-green-600';
-    if (metric >= threshold * 0.7) return 'text-yellow-600';
-    return 'text-red-600';
   };
 
   const filteredAgents = agents.filter(agent => {

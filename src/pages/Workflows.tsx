@@ -17,7 +17,6 @@ import {
   Link2,
   List,
   Lock,
-  MoreVertical,
   Pause,
   Play,
   PlayCircle,

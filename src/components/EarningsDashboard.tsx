@@ -10,7 +10,6 @@ import {
   TrendingUp,
   Wallet,
 } from 'lucide-react';
-import toast from 'react-hot-toast';
 import apiService from '../services/api';
 import { CreatorEarnings } from '../types';
 

@@ -76,7 +76,7 @@ const Activity: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'grid' | 'timeline'>('list');
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [refreshInterval, setRefreshInterval] = useState(30); // seconds
+  const refreshInterval = 30; // seconds
 
   useEffect(() => {
     loadActivityData();
@@ -87,7 +87,29 @@ const Activity: React.FC = () => {
   }, [autoRefresh, refreshInterval]);
 
   useEffect(() => {
-    filterActivities();
+    let filtered = activities;
+
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(activity => activity.category === selectedCategory);
+    }
+
+    if (selectedStatus !== 'all') {
+      filtered = filtered.filter(activity => activity.status === selectedStatus);
+    }
+
+    if (selectedPriority !== 'all') {
+      filtered = filtered.filter(activity => activity.priority === selectedPriority);
+    }
+
+    if (searchTerm) {
+      filtered = filtered.filter(activity =>
+        activity.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        activity.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        activity.user?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    setFilteredActivities(filtered);
   }, [activities, selectedCategory, selectedStatus, selectedPriority, searchTerm]);
 
   const loadActivityData = async () => {
@@ -243,32 +265,6 @@ const Activity: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const filterActivities = () => {
-    let filtered = activities;
-
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter(activity => activity.category === selectedCategory);
-    }
-
-    if (selectedStatus !== 'all') {
-      filtered = filtered.filter(activity => activity.status === selectedStatus);
-    }
-
-    if (selectedPriority !== 'all') {
-      filtered = filtered.filter(activity => activity.priority === selectedPriority);
-    }
-
-    if (searchTerm) {
-      filtered = filtered.filter(activity =>
-        activity.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        activity.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        activity.user?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    setFilteredActivities(filtered);
   };
 
   const getTypeIcon = (type: string) => {

@@ -10,7 +10,6 @@ import {
   Pause,
   Loader2,
   RefreshCw,
-  Settings,
 } from 'lucide-react';
 import apiService from '../services/api';
 import { Workflow, AgentResponse } from '../types';

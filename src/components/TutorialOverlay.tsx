@@ -26,7 +26,6 @@ const TutorialOverlay: React.FC = () => {
     nextStep, 
     previousStep, 
     skipTutorial, 
-    completeTutorial,
     completePageTutorial,
     tutorialMode,
     currentPage

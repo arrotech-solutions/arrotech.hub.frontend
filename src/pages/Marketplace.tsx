@@ -1,13 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import {
   ArrowDownToLine,
-  ChevronRight,
-  Clock,
   Code,
   Copy,
   Download,
   ExternalLink,
-  Filter,
   Globe,
   Grid,
   List,
@@ -20,7 +17,6 @@ import {
   ShoppingBag,
   Star,
   Tag,
-  ThumbsUp,
   TrendingUp,
   Upload,
   User,
@@ -33,7 +29,7 @@ import apiService from '../services/api';
 import { MarketplaceWorkflow, WorkflowExportData, WorkflowReview } from '../types';
 
 const Marketplace: React.FC = () => {
-  const { user } = useAuth();
+  useAuth();
   const [workflows, setWorkflows] = useState<MarketplaceWorkflow[]>([]);
   const [categories, setCategories] = useState<Array<{ name: string; count: number }>>([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +42,7 @@ const Marketplace: React.FC = () => {
   const [myDownloads, setMyDownloads] = useState<any[]>([]);
   
   // Modal states
-  const [selectedWorkflow, setSelectedWorkflow] = useState<MarketplaceWorkflow | null>(null);
+  const [, setSelectedWorkflow] = useState<MarketplaceWorkflow | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importData, setImportData] = useState('');
   const [importLoading, setImportLoading] = useState(false);
@@ -61,7 +57,7 @@ const Marketplace: React.FC = () => {
   
   // Trending workflows
   const [trendingWorkflows, setTrendingWorkflows] = useState<any[]>([]);
-  const [trendingLoading, setTrendingLoading] = useState(false);
+  const [, setTrendingLoading] = useState(false);
 
   useEffect(() => {
     if (activeTab === 'browse') {
@@ -73,6 +69,7 @@ const Marketplace: React.FC = () => {
     } else if (activeTab === 'my-downloads') {
       fetchMyDownloads();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, selectedCategory, sortBy]);
   
   const fetchTrending = async () => {

@@ -11,7 +11,6 @@ import {
   Star,
   Trash2,
   UserPlus,
-  X,
   Zap,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';

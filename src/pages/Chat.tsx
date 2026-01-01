@@ -1,4 +1,4 @@
-import { Activity, BarChart3, Bot, Calendar, CheckCircle, ChevronLeft, ChevronRight, Copy, CreditCard, Database, Download, Edit, FileText, Globe, Image, Mail, MapPin, MessageCircle, MessageSquare, Mic, Moon, MoreVertical, Music, Palette, Paperclip, Phone, Plus, Save, Send, Settings, Share2, Shield, ShoppingCart, Smile, Sparkles, Sun, Trash2, Upload, User, Users, Video, Workflow, XCircle, Zap } from 'lucide-react';
+import { Activity, BarChart3, Bot, Calendar, CheckCircle, ChevronLeft, ChevronRight, Copy, CreditCard, Database, Download, Edit, FileText, Globe, Image, Mail, MapPin, MessageCircle, MessageSquare, Mic, Moon, MoreVertical, Music, Palette, Paperclip, Phone, Plus, Save, Send, Settings, Share2, Shield, ShoppingCart, Smile, Sparkles, Sun, Trash2, Upload, User, Users, Video, XCircle, Zap } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -19,7 +19,7 @@ declare global {
 interface ChatProps { }
 
 const Chat: React.FC<ChatProps> = () => {
-  const { user } = useAuth();
+  useAuth();
   const navigate = useNavigate();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
@@ -28,12 +28,10 @@ const Chat: React.FC<ChatProps> = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [providers, setProviders] = useState<LLMProviderResponse | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<string>('ollama');
-  const [tools, setTools] = useState<ChatToolsResponse | null>(null);
-  const [showTools, setShowTools] = useState(false);
+  const [, setTools] = useState<ChatToolsResponse | null>(null);
   const [showNewConversationModal, setShowNewConversationModal] = useState(false);
   const [newConversationTitle, setNewConversationTitle] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
-  const [showRawData, setShowRawData] = useState(false);
   const [showDetailedResults, setShowDetailedResults] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [editingConversation, setEditingConversation] = useState<number | null>(null);
@@ -116,15 +114,13 @@ const Chat: React.FC<ChatProps> = () => {
       
       recognitionInstance.onresult = (event: any) => {
         let finalTranscript = '';
-        let interimTranscript = '';
         
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
             finalTranscript += transcript;
-          } else {
-            interimTranscript += transcript;
           }
+          // Note: interim results are not displayed in this implementation
         }
         
         if (finalTranscript) {
@@ -676,9 +672,9 @@ const Chat: React.FC<ChatProps> = () => {
         line.startsWith('TOOL_CALL:') ||
         line.startsWith('```javascript') ||
         line.startsWith('```') ||
-        line.includes('{') && line.includes('}') && line.includes('tool') ||
-        line.includes('arguments') && line.includes('{') ||
-        line.includes('result') && line.includes('{')) {
+        (line.includes('{') && line.includes('}') && line.includes('tool')) ||
+        (line.includes('arguments') && line.includes('{')) ||
+        (line.includes('result') && line.includes('{'))) {
         return;
       }
       
@@ -750,7 +746,6 @@ const Chat: React.FC<ChatProps> = () => {
         if (tool.result) {
           if (tool.result.success) {
             // Extract the actual result data
-            let resultData = tool.result;
             let resultMessage = '';
             let detailedData = null;
 
@@ -1936,242 +1931,6 @@ const Chat: React.FC<ChatProps> = () => {
         toast.error('Failed to start voice recording');
       }
     }
-  };
-
-  // Add a component to show tool execution summary
-  const renderToolSummary = (message: Message) => {
-    if (!message.tools_called || message.tools_called.length === 0) return null;
-
-    const successfulTools = message.tools_called.filter(tool => tool.result?.success);
-    const failedTools = message.tools_called.filter(tool => tool.result && !tool.result.success);
-
-    return (
-      <div className={`mt-3 p-3 border rounded-lg ${
-        isDarkMode 
-          ? 'bg-gradient-to-r from-gray-800/50 to-blue-900/50 border-gray-600' 
-          : 'bg-gradient-to-r from-gray-50 to-blue-50 border-gray-200'
-      }`}>
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center space-x-2">
-            <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-              <Zap className="w-3 h-3 text-white" />
-            </div>
-            <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>Tool Execution Summary</span>
-          </div>
-          <div className="flex items-center space-x-2 text-xs">
-            {successfulTools.length > 0 && (
-              <span className={`px-2 py-1 rounded-full ${
-                isDarkMode ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-700'
-              }`}>
-                {successfulTools.length} successful
-              </span>
-            )}
-            {failedTools.length > 0 && (
-              <span className={`px-2 py-1 rounded-full ${
-                isDarkMode ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700'
-              }`}>
-                {failedTools.length} failed
-              </span>
-            )}
-          </div>
-        </div>
-        
-        <div className="space-y-1">
-          {message.tools_called.map((tool, index) => {
-            let resultSummary = '';
-            const data = extractToolData(tool);
-            
-            if (tool.result?.success && data) {
-              // Generate meaningful summaries based on tool type and data
-              if (data.channels) {
-                resultSummary = `Found ${data.channels.length} channels`;
-              } else if (data.contacts) {
-                resultSummary = `Found ${data.contacts.length} contacts`;
-              } else if (data.deals) {
-                resultSummary = `Found ${data.deals.length} deals`;
-              } else if (data.workspaces) {
-                resultSummary = `Found ${data.workspaces.length} workspaces`;
-              } else if (data.reports) {
-                resultSummary = `Found ${data.reports.length} reports`;
-              } else if (data.filename) {
-                resultSummary = `Generated ${data.filename}`;
-              } else if (data.image_url) {
-                resultSummary = `Generated image`;
-                          } else if (data.payment_id) {
-              resultSummary = `Payment processed`;
-            } else if (data.url) {
-              resultSummary = `Web data retrieved`;
-            } else if (data.score !== undefined) {
-              resultSummary = `Lead scored: ${data.score}/100 (${data.qualification})`;
-            } else if (data.journey_id) {
-              resultSummary = `Journey created: ${data.journey_id}`;
-            } else if (data.conversion_probability !== undefined) {
-              resultSummary = `Prediction: ${data.conversion_probability}% conversion`;
-            } else if (data.message) {
-              resultSummary = data.message;
-            } else if (typeof data === 'string') {
-              resultSummary = data.length > 50 ? data.substring(0, 50) + '...' : data;
-            } else if (tool.result.result) {
-              resultSummary = typeof tool.result.result === 'string' 
-                ? tool.result.result 
-                : 'Data processed successfully';
-            }
-            } else if (tool.result?.success && tool.result?.result) {
-              resultSummary = typeof tool.result.result === 'string' 
-                ? tool.result.result 
-                : 'Success';
-            }
-
-            return (
-              <div key={index} className="flex items-center justify-between text-xs">
-                <div className="flex items-center space-x-2">
-                  <div className={`w-4 h-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
-                    {getToolIcon(tool.name)}
-                  </div>
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>
-                    {tool.name.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  {tool.result?.success ? (
-                    <CheckCircle className="w-3 h-3 text-green-500" />
-                  ) : (
-                    <XCircle className="w-3 h-3 text-red-500" />
-                  )}
-                  <span className={tool.result?.success 
-                    ? (isDarkMode ? 'text-green-400' : 'text-green-600') 
-                    : (isDarkMode ? 'text-red-400' : 'text-red-600')
-                  }>
-                    {resultSummary || (tool.result?.success ? 'Success' : 'Failed')}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
-  // Enhanced tool execution display with better organization
-  const renderToolExecution = (message: Message) => {
-    if (!message.tools_called || message.tools_called.length === 0) return null;
-
-    const successfulTools = message.tools_called.filter(tool => tool.result?.success);
-    const failedTools = message.tools_called.filter(tool => tool.result && !tool.result.success);
-
-    return (
-      <div className="space-y-4">
-        {/* Tool Execution Summary */}
-        <div className={`bg-gradient-to-r border rounded-xl p-4 ${
-          isDarkMode 
-            ? 'from-blue-900/50 to-indigo-900/50 border-blue-700' 
-            : 'from-blue-50 to-indigo-50 border-blue-200'
-        }`}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                <Zap className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <h3 className={`text-sm font-semibold ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>Tool Execution Summary</h3>
-                <p className={`text-xs ${isDarkMode ? 'text-blue-300' : 'text-blue-600'}`}>Actions performed and results</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              {successfulTools.length > 0 && (
-                <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
-                  {successfulTools.length} successful
-                </span>
-              )}
-              {failedTools.length > 0 && (
-                <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full font-medium">
-                  {failedTools.length} failed
-                </span>
-              )}
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {message.tools_called.map((tool, index) => {
-              const isSuccess = tool.result?.success;
-              const resultData = extractToolData(tool);
-              
-              return (
-                <div key={index} className={`p-3 rounded-lg border ${
-                  isSuccess 
-                    ? isDarkMode ? 'bg-green-900/30 border-green-700' : 'bg-green-50 border-green-200'
-                    : isDarkMode ? 'bg-red-900/30 border-red-700' : 'bg-red-50 border-red-200'
-                }`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-2">
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
-                        isSuccess ? 'bg-green-500' : 'bg-red-500'
-                      }`}>
-                        {isSuccess ? (
-                          <CheckCircle className="w-3 h-3 text-white" />
-                        ) : (
-                          <XCircle className="w-3 h-3 text-white" />
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <div className={`w-4 h-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                          {getToolIcon(tool.name)}
-                        </div>
-                        <span className={`text-sm font-medium ${
-                          isSuccess 
-                            ? isDarkMode ? 'text-green-300' : 'text-green-800'
-                            : isDarkMode ? 'text-red-300' : 'text-red-800'
-                        }`}>
-                          {tool.name.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Display tool-specific data */}
-                  {isSuccess && resultData && (
-                    <div className="mt-2">
-                      {renderToolSpecificData(tool, resultData, message)}
-                    </div>
-                  )}
-                  
-                  {/* Display error information for failed tools */}
-                  {!isSuccess && tool.result && (
-                    <div className="mt-2">
-                      <div className={`text-xs font-medium mb-1 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>Error:</div>
-                      <div className={`text-xs ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>
-                        {tool.result.error || tool.result.message || 'Unknown error occurred'}
-                      </div>
-                      {tool.result.status_code && (
-                        <div className={`text-xs mt-1 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
-                          Status: {tool.result.status_code}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  {/* Display tool arguments */}
-                  {tool.arguments && Object.keys(tool.arguments).length > 0 && (
-                    <div className={`mt-2 pt-2 border-t ${isDarkMode ? 'border-gray-600' : 'border-gray-200'}`}>
-                      <div className={`text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Parameters:</div>
-                      <div className={`text-xs space-y-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                        {Object.entries(tool.arguments).map(([key, value]) => (
-                          <div key={key} className="flex justify-between">
-                            <span className="font-medium">{key.replace(/_/g, ' ')}:</span>
-                            <span className="text-right max-w-xs truncate">{String(value)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    );
   };
 
   // Helper function to render tool-specific data
@@ -3711,7 +3470,6 @@ const Chat: React.FC<ChatProps> = () => {
                 .map((message, index) => {
                   // Check if this message has multiple versions
                   const hasVersions = messageVersions[message.id] && messageVersions[message.id].length > 0;
-                  const currentResponse = getCurrentResponse(message.id);
                   
                   return (
                 <div

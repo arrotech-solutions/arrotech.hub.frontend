@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import {
   ArrowRight,
   BookOpen,
-  Check,
   Clock,
   Filter,
   Grid,
@@ -33,6 +32,7 @@ const Templates: React.FC = () => {
   useEffect(() => {
     loadTemplates();
     loadCategories();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategory, selectedDifficulty, searchQuery]);
 
   const loadTemplates = async () => {

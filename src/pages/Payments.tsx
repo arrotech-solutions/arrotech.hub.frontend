@@ -22,7 +22,7 @@ import apiService from '../services/api';
 import { MpesaPaymentRequest, Payment, StripePaymentRequest, Subscription } from '../types';
 
 const Payments: React.FC = () => {
-  const { user } = useAuth();
+  useAuth();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +61,33 @@ const Payments: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    calculateStats();
+    const totalPayments = payments.length;
+    const successfulPayments = payments.filter(p => p.status === 'completed' || p.status === 'success').length;
+    const failedPayments = payments.filter(p => p.status === 'failed').length;
+    const pendingPayments = payments.filter(p => p.status === 'pending').length;
+    const totalAmount = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+    const activeSubscriptions = subscriptions.filter(s => s.status === 'active').length;
+    const monthlyRevenue = payments
+      .filter(p => {
+        const paymentDate = new Date(p.created_at);
+        const now = new Date();
+        return paymentDate.getMonth() === now.getMonth() && 
+               paymentDate.getFullYear() === now.getFullYear() &&
+               (p.status === 'completed' || p.status === 'success');
+      })
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
+    const averagePayment = totalPayments > 0 ? totalAmount / totalPayments : 0;
+
+    setStats({
+      totalPayments,
+      totalAmount,
+      successfulPayments,
+      failedPayments,
+      pendingPayments,
+      activeSubscriptions,
+      monthlyRevenue,
+      averagePayment
+    });
   }, [payments, subscriptions]);
 
   const fetchPaymentData = async () => {
@@ -85,35 +111,6 @@ const Payments: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const calculateStats = () => {
-    const totalPayments = payments.length;
-    const totalAmount = payments.reduce((sum, payment) => sum + payment.amount, 0);
-    const successfulPayments = payments.filter(p => p.status === 'completed').length;
-    const failedPayments = payments.filter(p => p.status === 'failed').length;
-    const pendingPayments = payments.filter(p => p.status === 'pending').length;
-    const activeSubscriptions = subscriptions.filter(s => s.status === 'active').length;
-    const monthlyRevenue = payments
-      .filter(p => {
-        const paymentDate = new Date(p.created_at);
-        const now = new Date();
-        return paymentDate.getMonth() === now.getMonth() && 
-               paymentDate.getFullYear() === now.getFullYear();
-      })
-      .reduce((sum, payment) => sum + payment.amount, 0);
-    const averagePayment = totalPayments > 0 ? totalAmount / totalPayments : 0;
-
-    setStats({
-      totalPayments,
-      totalAmount,
-      successfulPayments,
-      failedPayments,
-      pendingPayments,
-      activeSubscriptions,
-      monthlyRevenue,
-      averagePayment
-    });
   };
 
   const handleMpesaPayment = async () => {
