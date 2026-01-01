@@ -126,16 +126,6 @@ const Connections: React.FC = () => {
       console.log('[DEBUG] Extracted platforms data:', platformsData);
       console.log('[DEBUG] Loaded platforms:', platformsData.map(p => p.id));
       
-      // Check if ACC platform is loaded
-      const accPlatform = platformsData.find(p => p.id === 'acc');
-      if (accPlatform) {
-        console.log('[DEBUG] ACC platform loaded successfully:');
-        console.log('[DEBUG] ACC config schema:', JSON.stringify(accPlatform.config_schema, null, 2));
-      } else {
-        console.warn('[DEBUG] ACC platform NOT found in available platforms!');
-        console.log('[DEBUG] Available platform IDs:', platformsData.map(p => p.id));
-      }
-      
       setPlatforms(platformsData);
     } catch (error) {
       console.error('Error fetching platforms:', error);
@@ -147,14 +137,11 @@ const Connections: React.FC = () => {
   };
 
   const handleCreateConnection = async () => {
-    // Skip JSON validation for ACC platform (uses hardcoded form)
-    if (formData.platform !== 'acc') {
-      // Check if there are any JSON errors
-      const hasJsonErrors = Object.values(jsonErrors).some(error => error !== '');
-      if (hasJsonErrors) {
-        toast.error('Please fix JSON formatting errors before creating the connection');
-        return;
-      }
+    // Check if there are any JSON errors
+    const hasJsonErrors = Object.values(jsonErrors).some(error => error !== '');
+    if (hasJsonErrors) {
+      toast.error('Please fix JSON formatting errors before creating the connection');
+      return;
     }
 
     console.log('[DEBUG] Frontend sending connection data:');
@@ -163,28 +150,6 @@ const Connections: React.FC = () => {
     console.log('[DEBUG] Config keys:', Object.keys(formData.config));
     console.log('[DEBUG] Full config:', JSON.stringify(formData.config, null, 2));
     console.log('[DEBUG] Full payload:', JSON.stringify(formData, null, 2));
-    
-    // Special validation for ACC platform
-    if (formData.platform === 'acc') {
-      console.log('[DEBUG] ACC VALIDATION:');
-      console.log('[DEBUG] - transport:', formData.config?.transport);
-      console.log('[DEBUG] - command:', formData.config?.command);
-      console.log('[DEBUG] - cwd:', formData.config?.cwd);
-      console.log('[DEBUG] - env object:', formData.config?.env);
-      console.log('[DEBUG] - APS_CLIENT_ID:', formData.config?.env?.APS_CLIENT_ID);
-      console.log('[DEBUG] - APS_CLIENT_SECRET:', formData.config?.env?.APS_CLIENT_SECRET ? '[HIDDEN]' : 'MISSING');
-      console.log('[DEBUG] - timeoutMs:', formData.config?.timeoutMs);
-      console.log('[DEBUG] - maxRetries:', formData.config?.maxRetries);
-      
-      // Check if required fields are present
-      const requiredFields = ['transport', 'command', 'cwd', 'env'];
-      const missing = requiredFields.filter(field => !formData.config[field]);
-      if (missing.length > 0) {
-        console.error('[DEBUG] Missing required fields:', missing);
-      } else {
-        console.log('[DEBUG] ✅ All required top-level fields present');
-      }
-    }
 
     try {
       await apiService.createConnection(formData);
@@ -218,86 +183,10 @@ const Connections: React.FC = () => {
     try {
       setTestingConnection(id);
       
-      // Get connection details to check if it's ACC
-      const connection = connections.find(conn => conn.id === id);
-      const isACCConnection = connection?.platform === 'acc';
-      
       const response = await apiService.testConnection(id);
       console.log('[DEBUG] Test connection response:', response);
       
-      // Handle ACC OAuth flow - cast to any to handle dynamic response structure
       const responseData = response.data as any;
-      if (isACCConnection && responseData?.test_result?.oauth_url) {
-        const testResult = responseData.test_result;
-        const oauthUrl = testResult.oauth_url;
-        const redirectUri = testResult.redirect_uri;
-        const nextSteps = testResult.next_steps || [];
-        
-        console.log('[DEBUG] ACC OAuth Response:', testResult);
-        console.log('[DEBUG] Opening OAuth URL:', oauthUrl);
-        console.log('[DEBUG] Redirect URI:', redirectUri);
-        console.log('[DEBUG] Next Steps:', nextSteps);
-        
-        setOauthInProgress(id);
-        
-        try {
-          // Open OAuth URL in new window/tab
-          const oauthWindow = window.open(oauthUrl, '_blank', 'width=600,height=700,scrollbars=yes,resizable=yes');
-          
-          if (oauthWindow) {
-            // Show success message with next steps
-            toast.success(
-              `🔐 ${testResult.message || 'OAuth authentication opened in new window'}\n\nNext Steps:\n${nextSteps.slice(0,2).join('\n')}`,
-              { duration: 8000 }
-            );
-            
-            // Monitor OAuth window
-            const checkClosed = setInterval(() => {
-              if (oauthWindow.closed) {
-                clearInterval(checkClosed);
-                setOauthInProgress(null);
-                
-                // Check if authentication was completed (could poll backend status here)
-                toast('🔒 OAuth window closed. If authentication completed, your connection should now be active.');
-                
-                // Optionally refresh connections to update status
-                setTimeout(() => {
-                  fetchConnections();
-                }, 2000);
-              }
-            }, 1000);
-            
-            // Auto-clear OAuth state after 10 minutes (increased timeout)
-            setTimeout(() => {
-              clearInterval(checkClosed);
-              if (oauthInProgress === id) {
-                setOauthInProgress(null);
-                toast('⏰ OAuth session timed out. Please try testing the connection again if needed.');
-              }
-            }, 600000); // 10 minutes
-            
-          } else {
-            throw new Error('Popup blocked');
-          }
-        } catch (error) {
-          console.error('Failed to open OAuth URL:', error);
-          setOauthInProgress(null);
-          
-          // Enhanced fallback with next steps
-          navigator.clipboard.writeText(oauthUrl).then(() => {
-            toast.success(
-              `📋 OAuth URL copied to clipboard!\n\nNext Steps:\n1. Open the copied URL in your browser\n2. Complete Autodesk authentication\n3. Grant permissions when prompted`,
-              { duration: 10000 }
-            );
-          }).catch(() => {
-            toast.error(
-              `🔗 Please manually open this URL:\n${oauthUrl}\n\nThen complete the authentication process.`,
-              { duration: 15000 }
-            );
-          });
-        }
-        return;
-      }
       
       // Standard connection test handling
       if (response.data.status === 'active' || responseData?.test_result?.success) {
@@ -464,193 +353,13 @@ const Connections: React.FC = () => {
   };
 
   const renderConfigFields = (platform: ConnectionPlatform) => {
-    // Special hardcoded form for ACC platform
-    if (platform.id === 'acc') {
-      return (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Connection Name
-            </label>
-            <input
-              type="text"
-              placeholder="Enter a name for this connection"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Transport <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.config?.transport || 'stdio'}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  config: { ...formData.config, transport: e.target.value }
-                })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                readOnly
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Command <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.config?.command || '/app/acc-mcp-published/ACC-MCP'}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  config: { ...formData.config, command: e.target.value }
-                })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Working Directory <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.config?.cwd || '/app'}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  config: { ...formData.config, cwd: e.target.value }
-                })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Timeout (ms)
-              </label>
-              <input
-                type="number"
-                value={formData.config?.timeoutMs || 30000}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  config: { ...formData.config, timeoutMs: parseInt(e.target.value) || 30000 }
-                })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Max Retries
-              </label>
-              <input
-                type="number"
-                value={formData.config?.maxRetries || 3}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  config: { ...formData.config, maxRetries: parseInt(e.target.value) || 3 }
-                })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-          
-          <div className="col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Environment Variables <span className="text-red-500">*</span>
-            </label>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">APS Client ID</label>
-                <input
-                  type="text"
-                  placeholder="Your Autodesk APS Client ID"
-                  value={formData.config?.env?.APS_CLIENT_ID || ''}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    config: { 
-                      ...formData.config, 
-                      env: { 
-                        ...formData.config?.env, 
-                        APS_CLIENT_ID: e.target.value 
-                      }
-                    }
-                  })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">APS Client Secret</label>
-                <input
-                  type="password"
-                  placeholder="Your Autodesk APS Client Secret"
-                  value={formData.config?.env?.APS_CLIENT_SECRET || ''}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    config: { 
-                      ...formData.config, 
-                      env: { 
-                        ...formData.config?.env, 
-                        APS_CLIENT_SECRET: e.target.value 
-                      }
-                    }
-                  })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">APS Redirect URI</label>
-                <input
-                  type="text"
-                  value={formData.config?.env?.APS_REDIRECT_URI || 'https://mini-hub.fly.dev/api/aps/callback/oauth'}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    config: { 
-                      ...formData.config, 
-                      env: { 
-                        ...formData.config?.env, 
-                        APS_REDIRECT_URI: e.target.value 
-                      }
-                    }
-                  })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                />
-                <p className="text-xs text-green-600 mt-1">✅ Correct URI for backend OAuth callback (port 8000)</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-    
-    // Original dynamic form for other platforms
+    // Dynamic form for all platforms
     const configSchema = platform.config_schema?.properties || {};
-    
-    // Debug ACC platform specifically
-    if (platform.id === 'acc') {
-      console.log('[DEBUG] Rendering ACC config fields:');
-      console.log('[DEBUG] Config schema properties:', Object.keys(configSchema));
-      console.log('[DEBUG] Platform required fields:', platform.config_schema?.required);
-      console.log('[DEBUG] Current formData.config:', formData.config);
-    }
 
     const renderField = (name: string, schema: any) => {
       const fieldType = schema.type || 'text';
       const isRequired = platform.config_schema?.required?.includes(name) || false;
       const colSpanClass = (fieldType === 'object' || name.toLowerCase().includes('headers')) ? 'md:col-span-2' : '';
-
-      // Debug field rendering for ACC
-      if (platform.id === 'acc') {
-        console.log(`[DEBUG] Rendering field "${name}" of type "${fieldType}", required: ${isRequired}`);
-        console.log(`[DEBUG] Field schema:`, schema);
-        console.log(`[DEBUG] Current field value:`, formData.config[name]);
-      }
 
       // Transport-aware rendering for mcp_remote
       const isMcpRemote = platform.id === 'mcp_remote';
@@ -719,16 +428,10 @@ const Connections: React.FC = () => {
                 value={formData.config[name] || ''}
                 onChange={(e) => {
                   const newValue = e.target.value;
-                  if (platform.id === 'acc') {
-                    console.log(`[DEBUG] Updating field "${name}" with value:`, newValue);
-                  }
                   setFormData({
                     ...formData,
                     config: { ...formData.config, [name]: newValue }
                   });
-                  if (platform.id === 'acc') {
-                    console.log(`[DEBUG] New formData.config after update:`, { ...formData.config, [name]: newValue });
-                  }
                 }}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
@@ -786,55 +489,134 @@ const Connections: React.FC = () => {
           );
 
         case 'object':
-          // For mcp_remote, give quick hints for known object fields
-          const isACC = platform.id === 'acc';
+          // User-friendly key-value editor for non-technical users
           const jsonError = jsonErrors[name] || '';
+          const objectValue = formData.config[name] && typeof formData.config[name] === 'object' ? formData.config[name] : {};
+          const objectEntries = Object.entries(objectValue);
           
           return (
-            <div key={name} className={`space-y-2 ${colSpanClass}`}>
+            <div key={name} className={`space-y-3 ${colSpanClass}`}>
               <label className="block text-sm font-medium text-gray-700">
                 {schema.title || name}
                 {isRequired && <span className="text-red-500 ml-1">*</span>}
               </label>
-              <textarea
-                placeholder={schema.description || `Enter ${schema.title || name} as JSON`}
-                value={formData.config[name] ? JSON.stringify(formData.config[name], null, 2) : ''}
-                onChange={(e) => {
-                  const value = e.target.value || '{}';
-                  try {
-                    const parsed = JSON.parse(value);
-                    setFormData({ ...formData, config: { ...formData.config, [name]: parsed } });
-                    // Clear error on successful parse
-                    setJsonErrors({ ...jsonErrors, [name]: '' });
-                  } catch (error) {
-                    // Show error but don't update formData with invalid JSON
-                    setJsonErrors({ ...jsonErrors, [name]: 'Invalid JSON format' });
-                  }
-                }}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm resize-y min-h-[100px] max-h-[300px] overflow-auto whitespace-pre-wrap ${
-                  jsonError ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                }`}
-                rows={6}
-              />
-              {jsonError && (
-                <p className="text-xs text-red-600">{jsonError}</p>
-              )}
+              
+              {/* Simple Mode: Key-Value Pairs */}
+              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-600">
+                    {isMcpRemote && name === 'headers' ? 'HTTP Headers' : 
+                     isMcpRemote && name === 'env' ? 'Environment Variables' : 
+                     'Configuration Entries'}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {objectEntries.length} {objectEntries.length === 1 ? 'entry' : 'entries'}
+                  </span>
+                </div>
+                
+                {objectEntries.length > 0 ? (
+                  <div className="space-y-2">
+                    {objectEntries.map(([key, val], idx) => (
+                      <div key={idx} className="flex items-center space-x-2 bg-white rounded-lg p-2 border border-gray-200">
+                        <input
+                          type="text"
+                          placeholder={isMcpRemote && name === 'headers' ? 'Header Name' : 'Key'}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          value={key}
+                          onChange={(e) => {
+                            const newObj = { ...objectValue };
+                            delete newObj[key];
+                            newObj[e.target.value] = val;
+                            setFormData({ ...formData, config: { ...formData.config, [name]: newObj } });
+                          }}
+                        />
+                        <span className="text-gray-400 font-mono">=</span>
+                        <input
+                          type={name === 'env' || name === 'headers' ? 'text' : 'text'}
+                          placeholder={isMcpRemote && name === 'headers' ? 'Header Value' : 'Value'}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          value={String(val)}
+                          onChange={(e) => {
+                            setFormData({ ...formData, config: { ...formData.config, [name]: { ...objectValue, [key]: e.target.value } } });
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newObj = { ...objectValue };
+                            delete newObj[key];
+                            setFormData({ ...formData, config: { ...formData.config, [name]: newObj } });
+                          }}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                          title="Remove entry"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-gray-500">
+                    <p className="text-sm">No entries yet</p>
+                    <p className="text-xs mt-1">Click "Add Entry" to add key-value pairs</p>
+                  </div>
+                )}
+                
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newKey = isMcpRemote && name === 'headers' ? 'X-Custom-Header' : 
+                                   isMcpRemote && name === 'env' ? 'MY_VARIABLE' : 
+                                   `key${objectEntries.length + 1}`;
+                    setFormData({ ...formData, config: { ...formData.config, [name]: { ...objectValue, [newKey]: '' } } });
+                  }}
+                  className="flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-700 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Entry</span>
+                </button>
+              </div>
+              
+              {/* Hints for specific fields */}
               {isMcpRemote && name === 'headers' && (
-                <p className="text-xs text-gray-500">Example: {`{"Authorization": "Bearer YOUR_TOKEN"}`}</p>
+                <p className="text-xs text-gray-500">💡 Common headers: Authorization, Content-Type, X-API-Key</p>
               )}
               {isMcpRemote && name === 'env' && (
-                <p className="text-xs text-gray-500">Example: {`{"NODE_ENV": "production"}`}</p>
-              )}
-              {isACC && name === 'env' && (
-                <p className="text-xs text-gray-500">Example: {`{
-  "APS_CLIENT_ID": "your_client_id_here",
-  "APS_CLIENT_SECRET": "your_client_secret_here", 
-  "APS_REDIRECT_URI": "https://mini-hub.fly.dev/api/aps/callback/oauth"
-}`}</p>
+                <p className="text-xs text-gray-500">💡 Environment variables for the connection process</p>
               )}
               {schema.description && (
                 <p className="text-xs text-gray-500">{schema.description}</p>
               )}
+              
+              {/* Advanced Mode Toggle for developers */}
+              <details className="mt-2">
+                <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">
+                  🔧 Advanced: Edit as JSON (for developers)
+                </summary>
+                <div className="mt-2">
+                  <textarea
+                    placeholder={schema.description || `Enter ${schema.title || name} as JSON`}
+                    value={formData.config[name] ? JSON.stringify(formData.config[name], null, 2) : '{}'}
+                    onChange={(e) => {
+                      const value = e.target.value || '{}';
+                      try {
+                        const parsed = JSON.parse(value);
+                        setFormData({ ...formData, config: { ...formData.config, [name]: parsed } });
+                        setJsonErrors({ ...jsonErrors, [name]: '' });
+                      } catch (error) {
+                        setJsonErrors({ ...jsonErrors, [name]: 'Invalid JSON format' });
+                      }
+                    }}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm resize-y min-h-[100px] max-h-[300px] overflow-auto whitespace-pre-wrap ${
+                      jsonError ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                    }`}
+                    rows={4}
+                  />
+                  {jsonError && (
+                    <p className="text-xs text-red-600 mt-1">{jsonError}</p>
+                  )}
+                </div>
+              </details>
             </div>
           );
 
@@ -914,29 +696,7 @@ const Connections: React.FC = () => {
 
   const openCreateModal = (platform: ConnectionPlatform) => {
     setSelectedPlatform(platform);
-    
-    // Special handling for ACC platform to ensure correct structure
-    if (platform.id === 'acc') {
-      setFormData({ 
-        platform: 'acc', 
-        name: '', 
-        config: {
-          transport: 'stdio',
-          command: '/app/acc-mcp-published/ACC-MCP',
-          cwd: '/app',
-          env: {
-            APS_CLIENT_ID: '',
-            APS_CLIENT_SECRET: '',
-            APS_REDIRECT_URI: 'https://mini-hub.fly.dev/api/aps/callback/oauth'
-          },
-          timeoutMs: 30000,
-          maxRetries: 3
-        }
-      });
-    } else {
-      setFormData({ platform: platform.id, name: '', config: {} });
-    }
-    
+    setFormData({ platform: platform.id, name: '', config: {} });
     setJsonErrors({}); // Clear any previous JSON errors
     setShowCreateModal(true);
   };
@@ -1311,9 +1071,9 @@ const Connections: React.FC = () => {
         )}
 
         {/* Available Platforms */}
-        <div className="mt-12">
+        <div className="available-platforms mt-12">
           <h2 className="available-platforms-title text-xl font-semibold text-gray-900 mb-6">Available Platforms</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="platforms-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {platforms.map((platform) => {
             const isExpanded = expandedPlatforms.has(platform.id);
             const hasExpandableContent = 

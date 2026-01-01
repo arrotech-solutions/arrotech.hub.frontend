@@ -12,6 +12,10 @@ import Connections from './pages/Connections';
 import Dashboard from './pages/Dashboard';
 import ForgotPassword from './pages/ForgotPassword';
 import Login from './pages/Login';
+import Marketplace from './pages/Marketplace';
+import CreatorProfile from './pages/CreatorProfile';
+import Templates from './pages/Templates';
+import Favorites from './pages/Favorites';
 import MCPTools from './pages/MCPTools';
 import Payments from './pages/Payments';
 import Profile from './pages/Profile';
@@ -157,6 +161,50 @@ const AppRoutes: React.FC = () => {
           <ProtectedRoute>
             <Layout>
               <Agents />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/marketplace"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Marketplace />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/templates"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Templates />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/favorites"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Favorites />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/creator-profile"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <CreatorProfile />
             </Layout>
           </ProtectedRoute>
         }

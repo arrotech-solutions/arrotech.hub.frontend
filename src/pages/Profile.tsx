@@ -251,7 +251,7 @@ const Profile: React.FC = () => {
           {/* Main Content - 3 columns */}
           <div className="xl:col-span-3 space-y-8">
             {/* Personal Information Card */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200/50 hover:shadow-md transition-shadow">
+            <div className="personal-info-section bg-white rounded-2xl p-6 shadow-sm border border-gray-200/50 hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center space-x-4">
                   <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl">
@@ -308,7 +308,7 @@ const Profile: React.FC = () => {
             </div>
 
             {/* API Key Management Card */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200/50 hover:shadow-md transition-shadow">
+            <div className="api-key-section bg-white rounded-2xl p-6 shadow-sm border border-gray-200/50 hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center space-x-4">
                   <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl">
@@ -378,7 +378,7 @@ const Profile: React.FC = () => {
             </div>
 
             {/* Password Change Card */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200/50 hover:shadow-md transition-shadow">
+            <div className="security-section bg-white rounded-2xl p-6 shadow-sm border border-gray-200/50 hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center space-x-4">
                   <div className="p-3 bg-gradient-to-br from-green-500 to-green-600 rounded-xl">

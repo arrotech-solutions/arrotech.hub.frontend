@@ -1,19 +1,13 @@
 import {
-    AlertTriangle,
     BarChart3,
     Bot,
-    Eye,
-    GitBranch,
-    HardHat,
     Link,
-    Shield,
     Zap
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import apiService from '../services/api';
-import { ACCAmbientAgentStatus, ACCAnalytics } from '../types';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -25,35 +19,12 @@ const Dashboard: React.FC = () => {
     agents: 0,
     requests: 0
   });
-  const [accStatus, setAccStatus] = useState<ACCAmbientAgentStatus | null>(null);
-  const [accAnalytics, setAccAnalytics] = useState<ACCAnalytics | null>(null);
-
   useEffect(() => {
     const fetchData = async () => {
       try {
         // Fetch connections count
         const connectionsRes = await apiService.getConnections();
         const connectionsCount = connectionsRes.data.length;
-
-        // Fetch ACC ambient agent status
-        try {
-          const accStatusRes = await apiService.getACCWebhookStatus();
-          if (accStatusRes.success) {
-            setAccStatus(accStatusRes.data);
-          }
-        } catch (accError) {
-          console.log('ACC webhook status not available');
-        }
-
-        // Fetch ACC analytics
-        try {
-          const accAnalyticsRes = await apiService.getACCAnalytics('7d');
-          if (accAnalyticsRes.success) {
-            setAccAnalytics(accAnalyticsRes.data);
-          }
-        } catch (accError) {
-          console.log('ACC analytics not available');
-        }
 
         // Update usage state
         setUsage({
@@ -107,14 +78,6 @@ const Dashboard: React.FC = () => {
   // Quick actions data
   const quickActions = [
     {
-      title: 'ACC Ambient Agent',
-      description: 'Monitor ACC issues & duplicates',
-      icon: HardHat,
-      color: 'bg-gradient-to-r from-orange-500 to-red-600',
-      onClick: () => navigate('/agents'),
-      highlight: accStatus?.is_active
-    },
-    {
       title: 'Create Workflow',
       description: 'Build automated workflows',
       icon: Zap,
@@ -134,19 +97,18 @@ const Dashboard: React.FC = () => {
       icon: Zap,
       color: 'bg-gradient-to-r from-emerald-500 to-teal-600',
       onClick: () => navigate('/mcp-tools')
+    },
+    {
+      title: 'Manage Agents',
+      description: 'View and control your agents',
+      icon: Bot,
+      color: 'bg-gradient-to-r from-purple-500 to-pink-600',
+      onClick: () => navigate('/agents')
     }
   ];
 
-  // Recent activity data (dynamically include ACC activities)
+  // Recent activity data
   const recentActivity = [
-    ...(accAnalytics?.recent_activity.slice(0, 2).map(activity => ({
-      title: activity.description,
-      time: new Date(activity.timestamp).toLocaleString(),
-      icon: activity.type === 'duplicate_detected' ? GitBranch : 
-            activity.type === 'validation_failed' ? AlertTriangle : HardHat,
-      color: activity.type === 'duplicate_detected' ? 'bg-yellow-500' : 
-             activity.type === 'validation_failed' ? 'bg-red-500' : 'bg-orange-500'
-    })) || []),
     {
       title: 'Workflow "Email Automation" executed',
       time: '2 minutes ago',
@@ -164,8 +126,14 @@ const Dashboard: React.FC = () => {
       time: '1 hour ago',
       icon: Bot,
       color: 'bg-purple-500'
+    },
+    {
+      title: 'MCP Tool "send_email" executed',
+      time: '3 hours ago',
+      icon: Zap,
+      color: 'bg-teal-500'
     }
-  ].slice(0, 4);
+  ];
 
   if (loading) {
     return (
@@ -236,78 +204,6 @@ const Dashboard: React.FC = () => {
           ))}
         </div>
 
-        {/* ACC Ambient Agent Status */}
-        {accStatus && (
-          <div className="acc-ambient-status bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl p-6 shadow-sm border border-orange-200/50 mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <div className="p-3 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl">
-                  <HardHat className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900">ACC Ambient Agent</h3>
-                  <p className="text-gray-600">Real-time ACC issue monitoring & duplicate detection</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className={`px-3 py-1.5 rounded-full text-sm font-medium flex items-center space-x-2 ${
-                  accStatus.is_active 
-                    ? 'bg-green-100 text-green-800 border border-green-200' 
-                    : 'bg-gray-100 text-gray-800 border border-gray-200'
-                }`}>
-                  <div className={`w-2 h-2 rounded-full ${accStatus.is_active ? 'bg-green-500' : 'bg-gray-500'}`}></div>
-                  <span>{accStatus.is_active ? 'Active' : 'Inactive'}</span>
-                </div>
-                <button
-                  onClick={() => navigate('/agents')}
-                  className="px-4 py-2 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-lg hover:from-orange-700 hover:to-red-700 transition-all duration-200 shadow-sm"
-                >
-                  <Eye className="w-4 h-4 inline mr-2" />
-                  Manage
-                </button>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-white rounded-lg p-4 border border-orange-200/50">
-                <div className="flex items-center space-x-2 mb-2">
-                  <HardHat className="w-4 h-4 text-orange-600" />
-                  <span className="text-sm font-medium text-gray-700">Issues Processed</span>
-                </div>
-                <p className="text-2xl font-bold text-gray-900">{accStatus.issues_processed}</p>
-              </div>
-              <div className="bg-white rounded-lg p-4 border border-orange-200/50">
-                <div className="flex items-center space-x-2 mb-2">
-                  <GitBranch className="w-4 h-4 text-yellow-600" />
-                  <span className="text-sm font-medium text-gray-700">Duplicates Found</span>
-                </div>
-                <p className="text-2xl font-bold text-gray-900">{accStatus.duplicates_detected}</p>
-              </div>
-              <div className="bg-white rounded-lg p-4 border border-orange-200/50">
-                <div className="flex items-center space-x-2 mb-2">
-                  <AlertTriangle className="w-4 h-4 text-red-600" />
-                  <span className="text-sm font-medium text-gray-700">Incomplete Issues</span>
-                </div>
-                <p className="text-2xl font-bold text-gray-900">{accStatus.incomplete_issues}</p>
-              </div>
-              <div className="bg-white rounded-lg p-4 border border-orange-200/50">
-                <div className="flex items-center space-x-2 mb-2">
-                  <Shield className="w-4 h-4 text-green-600" />
-                  <span className="text-sm font-medium text-gray-700">Webhook Status</span>
-                </div>
-                <div className={`px-2 py-1 rounded text-xs font-medium ${
-                  accStatus.webhook_status === 'registered' 
-                    ? 'bg-green-100 text-green-800'
-                    : accStatus.webhook_status === 'error'
-                    ? 'bg-red-100 text-red-800' 
-                    : 'bg-gray-100 text-gray-800'
-                }`}>
-                  {accStatus.webhook_status}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Quick Actions */}
         <div className="quick-actions mb-8">
@@ -317,24 +213,14 @@ const Dashboard: React.FC = () => {
               <button
                 key={index}
                 onClick={action.onClick}
-                className={`flex items-center space-x-4 p-4 bg-white rounded-xl border border-gray-200/50 hover:shadow-md hover:border-blue-200 transition-all duration-200 text-left relative ${
-                  action.highlight ? 'ring-2 ring-orange-500 ring-opacity-50' : ''
-                }`}
+                className="flex items-center space-x-4 p-4 bg-white rounded-xl border border-gray-200/50 hover:shadow-md hover:border-blue-200 transition-all duration-200 text-left"
               >
-                {action.highlight && (
-                  <div className="absolute top-2 right-2">
-                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                  </div>
-                )}
                 <div className={`p-3 rounded-xl ${action.color}`}>
                   <action.icon className="w-6 h-6 text-white" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900">{action.title}</h3>
                   <p className="text-sm text-gray-600">{action.description}</p>
-                  {action.highlight && (
-                    <p className="text-xs text-green-600 font-medium mt-1">● Currently Active</p>
-                  )}
                 </div>
               </button>
             ))}

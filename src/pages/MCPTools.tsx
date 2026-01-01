@@ -1,4 +1,4 @@
-import { BarChart3, CheckCircle, FileText, Globe, Palette, Play, RefreshCw, Search, Settings, Shield, Sparkles, Users, XCircle, Zap } from 'lucide-react';
+import { BarChart3, CheckCircle, FileText, Globe, Palette, Play, Plus, RefreshCw, Search, Settings, Shield, Sparkles, Users, XCircle, Zap } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
@@ -443,36 +443,156 @@ const MCPTools: React.FC = () => {
         );
       
       case 'array':
+        // User-friendly list/tag input for non-technical users
+        const arrayValue = Array.isArray(toolParams[name]) ? toolParams[name] : [];
+        
         return (
-          <input
-            key={name}
-            type="text"
-            placeholder={`Enter ${name} (comma-separated)`}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={Array.isArray(toolParams[name]) ? toolParams[name].join(', ') : ''}
-            onChange={(e) => setToolParams({ ...toolParams, [name]: e.target.value.split(',').map(s => s.trim()) })}
-            required={isRequired}
-          />
+          <div key={name} className="space-y-2">
+            {/* Display current items as tags */}
+            {arrayValue.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {arrayValue.map((item: string, idx: number) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
+                  >
+                    {item}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newArr = [...arrayValue];
+                        newArr.splice(idx, 1);
+                        setToolParams({ ...toolParams, [name]: newArr });
+                      }}
+                      className="ml-2 text-blue-600 hover:text-blue-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            
+            {/* Add new item input */}
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                placeholder={`Add ${schema.items?.title || 'item'}...`}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const input = e.currentTarget;
+                    if (input.value.trim()) {
+                      setToolParams({ ...toolParams, [name]: [...arrayValue, input.value.trim()] });
+                      input.value = '';
+                    }
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={(e) => {
+                  const input = (e.currentTarget.previousSibling as HTMLInputElement);
+                  if (input.value.trim()) {
+                    setToolParams({ ...toolParams, [name]: [...arrayValue, input.value.trim()] });
+                    input.value = '';
+                  }
+                }}
+                className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-xs text-gray-500">💡 Press Enter or click + to add items</p>
+          </div>
         );
       
       case 'object':
+        // User-friendly key-value editor for non-technical users
+        const objectValue = typeof toolParams[name] === 'object' ? toolParams[name] : {};
+        const objectEntries = Object.entries(objectValue);
+        
         return (
-          <textarea
-            key={name}
-            placeholder={`Enter ${name} (JSON format)`}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={typeof toolParams[name] === 'object' ? JSON.stringify(toolParams[name], null, 2) : ''}
-            onChange={(e) => {
-              try {
-                const parsed = JSON.parse(e.target.value);
-                setToolParams({ ...toolParams, [name]: parsed });
-              } catch {
-                setToolParams({ ...toolParams, [name]: e.target.value });
-              }
-            }}
-            required={isRequired}
-            rows={3}
-          />
+          <div key={name} className="space-y-2">
+            {/* Simple Mode: Key-Value Pairs */}
+            <div className="space-y-2">
+              {objectEntries.length > 0 ? (
+                objectEntries.map(([key, val], idx) => (
+                  <div key={idx} className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      placeholder="Key"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      value={key}
+                      onChange={(e) => {
+                        const newObj = { ...objectValue };
+                        delete newObj[key];
+                        newObj[e.target.value] = val;
+                        setToolParams({ ...toolParams, [name]: newObj });
+                      }}
+                    />
+                    <span className="text-gray-400">=</span>
+                    <input
+                      type="text"
+                      placeholder="Value"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      value={String(val)}
+                      onChange={(e) => {
+                        setToolParams({ ...toolParams, [name]: { ...objectValue, [key]: e.target.value } });
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newObj = { ...objectValue };
+                        delete newObj[key];
+                        setToolParams({ ...toolParams, [name]: newObj });
+                      }}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                      title="Remove"
+                    >
+                      <XCircle className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-gray-500 italic">No entries yet. Add key-value pairs below.</p>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  const newKey = `key${objectEntries.length + 1}`;
+                  setToolParams({ ...toolParams, [name]: { ...objectValue, [newKey]: '' } });
+                }}
+                className="flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Entry</span>
+              </button>
+            </div>
+            
+            {/* Advanced Mode Toggle */}
+            <details className="mt-2">
+              <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">
+                Advanced: Edit as JSON
+              </summary>
+              <textarea
+                placeholder={`Enter ${name} (JSON format)`}
+                className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs"
+                value={typeof toolParams[name] === 'object' ? JSON.stringify(toolParams[name], null, 2) : ''}
+                onChange={(e) => {
+                  try {
+                    const parsed = JSON.parse(e.target.value);
+                    setToolParams({ ...toolParams, [name]: parsed });
+                  } catch {
+                    // Keep current value if JSON is invalid
+                  }
+                }}
+                rows={4}
+              />
+            </details>
+          </div>
         );
       
       default:
@@ -600,7 +720,7 @@ const MCPTools: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mcptools-header mb-8">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">MCP Tools</h1>
@@ -621,7 +741,7 @@ const MCPTools: React.FC = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="mcptools-stats grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {stats.map((stat, index) => (
             <div key={index} className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center">
@@ -638,7 +758,7 @@ const MCPTools: React.FC = () => {
         </div>
 
         {/* Filters and Search */}
-        <div className="bg-white rounded-lg shadow mb-6">
+        <div className="mcptools-filters bg-white rounded-lg shadow mb-6">
           <div className="p-6 border-b border-gray-200">
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
@@ -673,11 +793,11 @@ const MCPTools: React.FC = () => {
         </div>
 
         {/* Tools Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="mcptools-list grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredTools.map((tool) => (
             <div
               key={tool.name}
-              className="bg-white rounded-lg shadow border border-gray-200 p-6 hover:shadow-lg transition-shadow"
+              className="tool-card bg-white rounded-lg shadow border border-gray-200 p-6 hover:shadow-lg transition-shadow"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center space-x-3">

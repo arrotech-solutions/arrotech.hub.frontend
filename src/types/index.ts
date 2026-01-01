@@ -22,18 +22,102 @@ export interface Conversation {
 export interface Message {
   id: number;
   conversation_id: number;
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
   status: 'pending' | 'processing' | 'completed' | 'error';
   tokens_used?: number;
-  tools_called?: Array<{
-    name: string;
-    arguments: Record<string, any>;
-    result?: Record<string, any>;
-  }>;
+  tools_called?: Array<ToolCall>;
   tool_call_id?: string;
   error_message?: string;
   created_at: string;
+}
+
+// Tool Call Types for Workflow Extraction
+export interface ToolCall {
+  id?: string;
+  name: string;
+  arguments: Record<string, any>;
+  result?: Record<string, any>;
+  success?: boolean;
+}
+
+export interface ExtractedToolCall {
+  id: string;
+  message_id: number;
+  tool_name: string;
+  arguments: Record<string, any>;
+  result: Record<string, any>;
+  success: boolean;
+  timestamp: string | null;
+}
+
+export interface ConversationToolCallsResponse {
+  conversation_id: number;
+  conversation_title: string;
+  tool_calls: ExtractedToolCall[];
+  total_tool_calls: number;
+  successful_tool_calls: number;
+  available_fields: string[];
+  can_create_workflow: boolean;
+}
+
+export interface WorkflowExtractionRequest {
+  conversation_id: number;
+  workflow_name: string;
+  description?: string;
+  selected_step_ids?: string[];
+  parameterize_fields?: string[];
+  trigger_type?: 'manual' | 'scheduled' | 'webhook' | 'event';
+  trigger_config?: Record<string, any>;
+}
+
+export interface ExtractedWorkflowStep {
+  step_number: number;
+  tool_name: string;
+  tool_parameters: Record<string, any>;
+  description: string;
+  original_arguments: Record<string, any>;
+  original_result: Record<string, any>;
+  condition: WorkflowCondition | null;
+  retry_config: { max_retries: number; retry_delay: number };
+  timeout: number;
+}
+
+export interface ExtractedWorkflow {
+  name: string;
+  description: string;
+  steps: ExtractedWorkflowStep[];
+  trigger_type: string;
+  trigger_config?: Record<string, any>;
+  input_schema: Record<string, any>;
+  source_conversation_id: number;
+}
+
+export interface WorkflowExtractionResponse {
+  workflow: ExtractedWorkflow;
+  extraction_summary: {
+    total_messages: number;
+    tool_calls_found: number;
+    parameterized_fields: string[];
+  };
+  suggestions: string[];
+}
+
+export interface CreateWorkflowFromStepsRequest {
+  workflow_name: string;
+  description: string;
+  steps: Array<{
+    step_number: number;
+    tool_name: string;
+    tool_parameters: Record<string, any>;
+    description?: string;
+    condition?: WorkflowCondition | null;
+    retry_config?: { max_retries: number; retry_delay: number };
+    timeout?: number;
+  }>;
+  trigger_type?: string;
+  trigger_config?: Record<string, any>;
+  variables?: Record<string, any>;
 }
 
 export interface MessageCreate {
@@ -138,6 +222,9 @@ export interface MCPTool {
 }
 
 // Enhanced Workflow Types
+export type WorkflowVisibility = 'private' | 'unlisted' | 'public' | 'marketplace';
+export type WorkflowLicense = 'free' | 'personal' | 'commercial' | 'enterprise';
+
 export interface Workflow {
   id: number;
   name: string;
@@ -153,6 +240,19 @@ export interface Workflow {
   updated_at?: string;
   steps: WorkflowStep[];
   executions?: WorkflowExecution[];
+  // Sharing & Marketplace fields
+  visibility?: WorkflowVisibility;
+  share_code?: string;
+  license_type?: WorkflowLicense;
+  price?: number;
+  currency?: string;
+  category?: string;
+  tags?: string[];
+  required_connections?: string[];
+  downloads_count?: number;
+  rating?: number;
+  rating_count?: number;
+  author_name?: string;
 }
 
 export interface WorkflowStep {
@@ -1300,92 +1400,380 @@ export interface PowerBIAnalyticsSummary {
   refresh_status: Record<string, string>;
 }
 
-// ACC Ambient Agent Types
-export interface ACCProject {
-  id: string;
+// ==================== Marketplace Types ====================
+
+export interface MarketplaceWorkflow {
+  id: number;
   name: string;
-  containerId: string;
-  attributes?: {
+  description?: string;
+  author_name: string;
+  category?: string;
+  tags?: string[];
+  visibility: WorkflowVisibility;
+  license_type: WorkflowLicense;
+  price?: number;
+  currency: string;
+  downloads_count: number;
+  rating?: number;
+  rating_count: number;
+  required_connections?: string[];
+  steps_count: number;
+  steps_preview?: Array<{ tool_name: string; description?: string }>;
+  created_at: string;
+}
+
+export interface WorkflowReview {
+  id: number;
+  user_id: number;
+  user_name?: string;
+  rating: number;
+  title?: string;
+  comment?: string;
+  helpful_count: number;
+  created_at: string;
+}
+
+export interface WorkflowExportData {
+  format_version: string;
+  exported_at: string;
+  workflow: {
     name: string;
     description?: string;
-    status?: string;
+    version: number;
+    trigger_type: string;
+    trigger_config?: Record<string, any>;
+    variables?: Record<string, any>;
+    category?: string;
+    tags?: string[];
+    steps: Array<{
+      step_number: number;
+      tool_name: string;
+      tool_parameters?: Record<string, any>;
+      description?: string;
+      condition?: any;
+      retry_config?: { max_retries: number; retry_delay: number };
+      timeout?: number;
+    }>;
+  };
+  requirements: {
+    connections: string[];
+  };
+  metadata?: {
+    author: string;
+    license: string;
+    downloads: number;
+    rating?: number;
+    original_id: number;
+    share_code?: string;
   };
 }
 
-export interface ACCIssue {
-  id: string;
+export interface UpdateVisibilityRequest {
+  visibility: WorkflowVisibility;
+  license_type?: WorkflowLicense;
+  price?: number;
+  currency?: string;
+  category?: string;
+  tags?: string[];
+  author_name?: string;
+}
+
+export interface ImportWorkflowRequest {
+  workflow_data: WorkflowExportData;
+  source_workflow_id?: number;
+}
+
+export interface AddReviewRequest {
+  rating: number;
+  title?: string;
+  comment?: string;
+}
+
+export interface MarketplaceCategory {
+  name: string;
+  count: number;
+}
+
+export interface MarketplaceResponse<T = any> {
+  success: boolean;
+  data?: T;
+  message?: string;
+}
+
+export interface MySharedWorkflow {
+  id: number;
+  name: string;
+  visibility: WorkflowVisibility;
+  share_code?: string;
+  downloads_count: number;
+  rating?: number;
+  rating_count: number;
+}
+
+export interface MyDownload {
+  id: number;
+  workflow_id: number;
+  workflow_name: string;
+  downloaded_at: string;
+  imported_workflow_id?: number;
+}
+
+// Creator Profile types
+export interface CreatorProfile {
+  id: number;
+  user_id: number;
+  display_name: string;
+  bio?: string;
+  avatar_url?: string;
+  website?: string;
+  github_url?: string;
+  twitter_url?: string;
+  linkedin_url?: string;
+  is_verified: boolean;
+  badges?: string[];
+  total_workflows: number;
+  total_downloads: number;
+  total_reviews: number;
+  average_rating: number;
+  total_earnings?: number;
+  is_public: boolean;
+  accept_donations: boolean;
+  created_at: string;
+}
+
+export interface CreatorProfileCreate {
+  display_name: string;
+  bio?: string;
+  avatar_url?: string;
+  website?: string;
+  github_url?: string;
+  twitter_url?: string;
+  linkedin_url?: string;
+  is_public?: boolean;
+  accept_donations?: boolean;
+}
+
+export interface CreatorWorkflow {
+  id: number;
+  name: string;
+  description?: string;
+  category?: string;
+  tags?: string[];
+  downloads_count: number;
+  rating?: number;
+  rating_count: number;
+  visibility: string;
+  share_code?: string;
+  created_at: string;
+}
+
+export interface TopCreator {
+  id: number;
+  display_name: string;
+  avatar_url?: string;
+  is_verified: boolean;
+  badges?: string[];
+  total_workflows: number;
+  total_downloads: number;
+  average_rating: number;
+}
+
+// Analytics types
+export interface WorkflowAnalytics {
+  workflow_id: number;
+  workflow_name: string;
+  period_days: number;
+  summary: {
+    total_impressions: number;
+    total_detail_views: number;
+    total_imports: number;
+    total_search_clicks: number;
+    conversion_rate: number;
+    avg_daily_views: number;
+  };
+  daily: DailyMetrics[];
+}
+
+export interface DailyMetrics {
+  date: string;
+  impressions: number;
+  detail_views: number;
+  imports: number;
+  search_clicks: number;
+}
+
+export interface AnalyticsSummary {
+  total_workflows: number;
+  total_impressions: number;
+  total_views: number;
+  total_imports: number;
+  overall_conversion_rate: number;
+}
+
+export interface WorkflowAnalyticsItem {
+  workflow_id: number;
+  workflow_name: string;
+  impressions: number;
+  detail_views: number;
+  imports: number;
+  conversion_rate: number;
+}
+
+export interface TrendingWorkflow {
+  id: number;
+  name: string;
+  description?: string;
+  category?: string;
+  author_name?: string;
+  downloads_count: number;
+  rating?: number;
+  rating_count: number;
+  engagement_score: number;
+}
+
+// Notification types
+export type NotificationType = 
+  | 'workflow_imported'
+  | 'workflow_reviewed'
+  | 'workflow_rated'
+  | 'new_follower'
+  | 'milestone_reached'
+  | 'system_announcement'
+  | 'earnings_received';
+
+export interface AppNotification {
+  id: number;
+  notification_type: NotificationType;
   title: string;
+  message: string;
+  is_read: boolean;
+  action_url?: string;
+  workflow_id?: number;
+  workflow_name?: string;
+  actor_name?: string;
+  metadata?: Record<string, any>;
+  created_at: string;
+}
+
+// Follower types
+export interface Follower {
+  id: number;
+  user_id: number;
+  user_name?: string;
+  followed_at: string;
+}
+
+export interface Following {
+  id: number;
+  user_id: number;
+  user_name?: string;
+  creator_profile_id?: number;
+  display_name?: string;
+  avatar_url?: string;
+  followed_at: string;
+}
+
+export interface ActivityFeedItem {
+  id: number;
+  activity_type: string;
+  title: string;
+  description?: string;
+  actor_name?: string;
+  workflow_id?: number;
+  workflow_name?: string;
+  metadata?: Record<string, any>;
+  created_at: string;
+}
+
+// Template Gallery Types
+export interface GalleryTemplate {
+  id: string;
+  name: string;
   description: string;
-  status: string;
-  assignedTo?: string;
-  assignedToType?: string;
-  dueDate?: string;
-  issueSubtypeId?: string;
-  priority?: string;
-  containerId: string;
-  displayId?: number;
-  createdAt: string;
-  updatedAt: string;
-  createdBy?: string;
-}
-
-export interface ACCAmbientAgentStatus {
-  is_active: boolean;
-  status?: string;
-  started_at?: string;
-  uptime_seconds?: number;
-  project_id?: string;
-  callback_url?: string;
-  webhook_status?: 'registered' | 'unregistered' | 'error';
-  last_activity?: string;
-  issues_processed?: number;
-  duplicates_detected?: number;
-  incomplete_issues?: number;
-  components?: {
-    issue_monitoring?: {
-      project_id?: string;
-      callback_url?: string;
-      webhook_status?: string;
-      issues_processed?: number;
-      duplicates_detected?: number;
-      incomplete_issues?: number;
-      details?: any;
-    };
-    event_bus?: {
-      status?: string;
-      details?: any;
-    };
-    weekly_summary?: Record<string, any>;
-  };
-  configuration?: Record<string, any>;
-  error?: string;
-}
-
-export interface ACCAnalytics {
-  timeframe: string;
-  total_issues: number;
-  new_issues: number;
-  duplicate_issues: number;
-  incomplete_issues: number;
-  completion_rate: number;
-  duplicate_rate: number;
-  issues_by_priority: {
-    low: number;
-    normal: number;
-    high: number;
-    critical: number;
-  };
-  issues_by_status: {
-    draft: number;
-    open: number;
-    pending: number;
-    in_review: number;
-    closed: number;
-  };
-  recent_activity: Array<{
-    timestamp: string;
-    type: 'issue_created' | 'duplicate_detected' | 'validation_failed';
+  category: string;
+  icon: string;
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  estimated_time: string;
+  tags: string[];
+  required_connections: string[];
+  steps: Array<{
+    step_number: number;
+    tool_name: string;
+    tool_parameters: Record<string, any>;
     description: string;
-    issue_id?: string;
+    condition?: any;
   }>;
-} 
+  variables: Record<string, {
+    type: string;
+    required?: boolean;
+    description?: string;
+    default?: any;
+    enum?: string[];
+    format?: string;
+  }>;
+}
+
+export interface TemplateCategory {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+}
+
+// Purchase/Earnings Types
+export interface Purchase {
+  id: number;
+  workflow_id: number;
+  workflow_name?: string;
+  workflow_description?: string;
+  downloaded_at: string;
+}
+
+export interface CreatorEarnings {
+  total_earnings: number;
+  pending_earnings: number;
+  this_month: number;
+  transactions: Array<{
+    id: number;
+    amount: number;
+    currency: string;
+    status: string;
+    created_at: string;
+  }>;
+}
+
+// Favorites Types
+export interface WorkflowFavorite {
+  id: number;
+  workflow_id: number;
+  workflow: {
+    id: number;
+    name: string;
+    description: string;
+    category: string;
+    tags: string[];
+    visibility: string;
+    downloads_count: number;
+    rating_count: number;
+    author_name: string;
+  } | null;
+  created_at: string;
+}
+
+// User Preferences Types
+export interface UserPreferences {
+  email_on_download: boolean;
+  email_on_sale: boolean;
+  email_on_review: boolean;
+  email_on_follower: boolean;
+  email_weekly_summary: boolean;
+  notify_on_download: boolean;
+  notify_on_sale: boolean;
+  notify_on_review: boolean;
+  notify_on_follower: boolean;
+  theme: 'light' | 'dark' | 'system';
+  language: string;
+  timezone: string;
+  default_visibility: string;
+}
+

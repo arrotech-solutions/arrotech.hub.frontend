@@ -1,10 +1,12 @@
-import { Activity, BarChart3, Bot, Calendar, CheckCircle, ChevronLeft, ChevronRight, Copy, CreditCard, Database, Download, Edit, FileText, Globe, Image, Mail, MapPin, MessageCircle, MessageSquare, Mic, Moon, MoreVertical, Music, Palette, Paperclip, Phone, Plus, Send, Settings, Share2, Shield, ShoppingCart, Smile, Sparkles, Sun, Trash2, Upload, User, Users, Video, XCircle, Zap } from 'lucide-react';
+import { Activity, BarChart3, Bot, Calendar, CheckCircle, ChevronLeft, ChevronRight, Copy, CreditCard, Database, Download, Edit, FileText, Globe, Image, Mail, MapPin, MessageCircle, MessageSquare, Mic, Moon, MoreVertical, Music, Palette, Paperclip, Phone, Plus, Save, Send, Settings, Share2, Shield, ShoppingCart, Smile, Sparkles, Sun, Trash2, Upload, User, Users, Video, Workflow, XCircle, Zap } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import apiService from '../services/api';
-import { ChatToolsResponse, Conversation, LLMProviderResponse, Message } from '../types';
+import { ChatToolsResponse, Conversation, ExtractedToolCall, LLMProviderResponse, Message } from '../types';
+import WorkflowBuilderModal from '../components/WorkflowBuilderModal';
+import AgentCreatorModal from '../components/AgentCreatorModal';
 
 // TypeScript declarations for speech recognition
 declare global {
@@ -44,6 +46,13 @@ const Chat: React.FC<ChatProps> = () => {
   const [editingMessageText, setEditingMessageText] = useState('');
   const [messageVersions, setMessageVersions] = useState<{ [key: number]: Message[] }>({});
   const [currentVersion, setCurrentVersion] = useState<{ [key: number]: number }>({});
+  
+  // Workflow Builder State
+  const [showWorkflowBuilder, setShowWorkflowBuilder] = useState(false);
+  const [showAgentCreator, setShowAgentCreator] = useState(false);
+  const [extractedToolCalls, setExtractedToolCalls] = useState<ExtractedToolCall[]>([]);
+  const [createdWorkflowId, setCreatedWorkflowId] = useState<number | null>(null);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -144,6 +153,78 @@ const Chat: React.FC<ChatProps> = () => {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Collect all tool calls from the current conversation for workflow extraction
+  const collectToolCallsForWorkflow = (): ExtractedToolCall[] => {
+    const toolCalls: ExtractedToolCall[] = [];
+    let callIndex = 0;
+
+    messages.forEach((msg) => {
+      if (msg.tools_called && msg.tools_called.length > 0) {
+        msg.tools_called.forEach((tool) => {
+          toolCalls.push({
+            id: tool.id || `call_${callIndex}`,
+            message_id: msg.id,
+            tool_name: tool.name,
+            arguments: tool.arguments || {},
+            result: tool.result || {},
+            success: tool.result?.success !== false,
+            timestamp: msg.created_at || null,
+          });
+          callIndex++;
+        });
+      }
+    });
+
+    return toolCalls;
+  };
+
+  // Check if current conversation has tool calls that can be saved as workflow
+  const hasToolCallsForWorkflow = (): boolean => {
+    return messages.some(msg => msg.tools_called && msg.tools_called.length > 0);
+  };
+
+  // Get count of successful tool calls
+  const getSuccessfulToolCallCount = (): number => {
+    let count = 0;
+    messages.forEach((msg) => {
+      if (msg.tools_called) {
+        count += msg.tools_called.filter(tool => tool.result?.success !== false).length;
+      }
+    });
+    return count;
+  };
+
+  // Handle opening workflow builder
+  const handleOpenWorkflowBuilder = () => {
+    const toolCalls = collectToolCallsForWorkflow();
+    if (toolCalls.length === 0) {
+      toast.error('No tool executions found in this conversation to save as workflow');
+      return;
+    }
+    setExtractedToolCalls(toolCalls);
+    setShowWorkflowBuilder(true);
+  };
+
+  // Handle workflow created callback
+  const handleWorkflowCreated = (workflow: any) => {
+    setCreatedWorkflowId(workflow.id);
+    toast.success(`Workflow "${workflow.name}" created successfully!`);
+  };
+
+  // Handle create agent from workflow
+  const handleCreateAgentFromWorkflow = (workflowId: number) => {
+    setCreatedWorkflowId(workflowId);
+    setShowWorkflowBuilder(false);
+    setShowAgentCreator(true);
+  };
+
+  // Handle agent created callback
+  const handleAgentCreated = (agent: any) => {
+    toast.success(`Agent created successfully! ID: ${agent.agent_id}`);
+    setShowAgentCreator(false);
+    setCreatedWorkflowId(null);
   };
 
   const loadConversations = async () => {
@@ -3290,9 +3371,9 @@ const Chat: React.FC<ChatProps> = () => {
   return (
     <div className={`flex h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50'}`}>
       {/* Modern Enhanced Sidebar */}
-      <div className={`${sidebarCollapsed ? 'w-16' : 'w-64'} ${isDarkMode ? 'bg-gray-800/30 border-gray-600/30' : 'bg-white/30 border-gray-200/30'} backdrop-blur-sm border-r flex flex-col transition-all duration-300 ease-in-out`}>
+      <div className={`chat-sidebar ${sidebarCollapsed ? 'w-16' : 'w-64'} ${isDarkMode ? 'bg-gray-800/30 border-gray-600/30' : 'bg-white/30 border-gray-200/30'} backdrop-blur-sm border-r flex flex-col transition-all duration-300 ease-in-out`}>
         {/* Enhanced Header */}
-        <div className={`${sidebarCollapsed ? 'p-3' : 'p-6'} border-b ${isDarkMode ? 'border-gray-600/30' : 'border-gray-200/30'}`}>
+        <div className={`chat-header ${sidebarCollapsed ? 'p-3' : 'p-6'} border-b ${isDarkMode ? 'border-gray-600/30' : 'border-gray-200/30'}`}>
           <div className={`flex items-center justify-between ${sidebarCollapsed ? 'mb-3' : 'mb-6'}`}>
             {!sidebarCollapsed && (
               <div className="flex items-center justify-center">
@@ -3345,7 +3426,7 @@ const Chat: React.FC<ChatProps> = () => {
           
           {/* Enhanced Provider Selection */}
           {!sidebarCollapsed && (
-            <div className="space-y-2">
+            <div className="chat-provider-select space-y-2">
               <div className="relative">
                 <select
                   value={selectedProvider}
@@ -3375,7 +3456,7 @@ const Chat: React.FC<ChatProps> = () => {
         </div>
 
         {/* Enhanced Conversations List */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="chat-conversations-list flex-1 overflow-y-auto">
           <div className={`${sidebarCollapsed ? 'p-2' : 'p-4'} space-y-4`}>
             {!sidebarCollapsed && Object.entries(groupConversationsByTime(conversations)).map(([groupName, groupConversations]) => (
               <div key={groupName} className="space-y-2">
@@ -3556,7 +3637,7 @@ const Chat: React.FC<ChatProps> = () => {
         </div>
 
         {/* Enhanced New Conversation Button */}
-        <div className={`${sidebarCollapsed ? 'p-2' : 'p-4'} border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200/50'}`}>
+        <div className={`chat-new-conversation ${sidebarCollapsed ? 'p-2' : 'p-4'} border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200/50'}`}>
           <button
             onClick={() => setShowNewConversationModal(true)}
             className={`w-full py-3 px-4 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-3 ${
@@ -3579,8 +3660,37 @@ const Chat: React.FC<ChatProps> = () => {
 
       {/* Enhanced Main Chat Area */}
       <div className="flex-1 flex flex-col">
+        {/* Chat Header with Actions */}
+        {currentConversation && hasToolCallsForWorkflow() && (
+          <div className={`chat-workflow-header px-8 py-3 border-b flex items-center justify-between ${
+            isDarkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-white/50 border-gray-200'
+          }`}>
+            <div className="flex items-center space-x-3">
+              <div className={`chat-tools-executed flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-medium ${
+                isDarkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-700'
+              }`}>
+                <CheckCircle size={14} />
+                <span>{getSuccessfulToolCallCount()} tool{getSuccessfulToolCallCount() !== 1 ? 's' : ''} executed</span>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleOpenWorkflowBuilder}
+                className={`chat-save-workflow-btn flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  isDarkMode 
+                    ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700 shadow-lg' 
+                    : 'bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600 shadow-md'
+                }`}
+              >
+                <Save size={16} />
+                <span>Save as Workflow</span>
+              </button>
+            </div>
+          </div>
+        )}
+        
         {/* Enhanced Messages Area */}
-        <div className="flex-1 overflow-y-auto p-8 space-y-8">
+        <div className="chat-messages-area flex-1 overflow-y-auto p-8 space-y-8">
           {renderWelcomeMessage()}
           {currentConversation ? (
             <>
@@ -3817,11 +3927,11 @@ const Chat: React.FC<ChatProps> = () => {
         </div>
 
         {/* Enhanced Input Area - Modern ChatGPT Style */}
-        <div className={`${isDarkMode ? 'bg-gray-800/95' : ''} backdrop-blur-sm`}>
+        <div className={`chat-input-area ${isDarkMode ? 'bg-gray-800/95' : ''} backdrop-blur-sm`}>
           <div className="max-w-4xl mx-auto p-6">
             <div className="relative">
               {/* Enhanced Input Container */}
-              <div className={`relative border rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 focus-within:border-blue-500 focus-within:shadow-xl ${
+              <div className={`chat-input-container relative border rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 focus-within:border-blue-500 focus-within:shadow-xl ${
                 isDarkMode
                   ? 'bg-gray-800/20 border-gray-600/50'
                   : 'bg-white/20 border-gray-300/50'
@@ -3895,7 +4005,7 @@ const Chat: React.FC<ChatProps> = () => {
                   <button
                     onClick={sendMessage}
                     disabled={!inputMessage.trim() || isLoading}
-                    className={`flex items-center space-x-3 px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-200 ${
+                    className={`chat-send-btn flex items-center space-x-3 px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-200 ${
                       inputMessage.trim() && !isLoading
                         ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 shadow-lg hover:shadow-xl transform hover:scale-105'
                         : isDarkMode
@@ -4155,6 +4265,31 @@ const Chat: React.FC<ChatProps> = () => {
           `
         }} />
       </div>
+      
+      {/* Workflow Builder Modal */}
+      {showWorkflowBuilder && currentConversation && (
+        <WorkflowBuilderModal
+          open={showWorkflowBuilder}
+          onClose={() => setShowWorkflowBuilder(false)}
+          conversationId={currentConversation.id}
+          toolCalls={extractedToolCalls}
+          onWorkflowCreated={handleWorkflowCreated}
+          onCreateAgent={handleCreateAgentFromWorkflow}
+        />
+      )}
+      
+      {/* Agent Creator Modal */}
+      {showAgentCreator && createdWorkflowId && (
+        <AgentCreatorModal
+          open={showAgentCreator}
+          onClose={() => {
+            setShowAgentCreator(false);
+            setCreatedWorkflowId(null);
+          }}
+          workflowId={createdWorkflowId}
+          onAgentCreated={handleAgentCreated}
+        />
+      )}
     </div>
   );
 };

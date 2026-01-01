@@ -6,12 +6,17 @@ import {
   ChevronDown,
   ChevronRight,
   Clock,
+  Copy,
+  Download,
   Edit,
   Eye,
   Filter,
+  Globe,
   Grid,
   History,
+  Link2,
   List,
+  Lock,
   MoreVertical,
   Pause,
   Play,
@@ -20,20 +25,26 @@ import {
   RefreshCw,
   Search,
   Settings,
+  Share2,
   Target,
   Trash2,
+  Upload,
+  Users,
   Workflow,
+  X,
   XCircle,
   Zap
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import ExecuteWorkflowModal from '../components/ExecuteWorkflowModal';
 import apiService from '../services/api';
 import {
   WorkflowCreateRequest,
   WorkflowExecuteRequest,
   WorkflowExecution,
   WorkflowStepExecution,
+  WorkflowVisibility,
   Workflow as WorkflowType
 } from '../types';
 
@@ -47,6 +58,16 @@ const Workflows: React.FC = () => {
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowType | null>(null);
   const [selectedExecution, setSelectedExecution] = useState<WorkflowExecution | null>(null);
   const [executingWorkflow, setExecutingWorkflow] = useState<WorkflowType | null>(null);
+  
+  // Sharing state
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [sharingWorkflow, setSharingWorkflow] = useState<WorkflowType | null>(null);
+  const [shareVisibility, setShareVisibility] = useState<WorkflowVisibility>('private');
+  const [shareCategory, setShareCategory] = useState('');
+  const [shareTags, setShareTags] = useState('');
+  const [shareAuthorName, setShareAuthorName] = useState('');
+  const [sharingLoading, setSharingLoading] = useState(false);
+  const [exportedJson, setExportedJson] = useState<string | null>(null);
   const [stepExecutions, setStepExecutions] = useState<WorkflowStepExecution[]>([]);
   const [newWorkflow, setNewWorkflow] = useState<WorkflowCreateRequest>({
     description: '',
@@ -218,6 +239,87 @@ const Workflows: React.FC = () => {
     } catch (error) {
       console.error('Error deleting workflow:', error);
       toast.error('Failed to delete workflow');
+    }
+  };
+
+  const openShareModal = (workflow: WorkflowType) => {
+    setSharingWorkflow(workflow);
+    setShareVisibility(workflow.visibility || 'private');
+    setShareCategory(workflow.category || '');
+    setShareTags(workflow.tags?.join(', ') || '');
+    setShareAuthorName(workflow.author_name || '');
+    setExportedJson(null);
+    setShowShareModal(true);
+  };
+
+  const handleUpdateVisibility = async () => {
+    if (!sharingWorkflow) return;
+    setSharingLoading(true);
+    try {
+      const response = await apiService.updateWorkflowVisibility(sharingWorkflow.id, {
+        visibility: shareVisibility,
+        category: shareCategory || undefined,
+        tags: shareTags ? shareTags.split(',').map(t => t.trim()) : undefined,
+        author_name: shareAuthorName || undefined,
+      });
+      if (response.success) {
+        toast.success(`Workflow visibility updated to ${shareVisibility}`);
+        if (response.data?.share_code) {
+          const shareUrl = `${window.location.origin}/marketplace/workflow/${response.data.share_code}`;
+          navigator.clipboard.writeText(shareUrl);
+          toast.success('Share link copied to clipboard!');
+        }
+        loadWorkflows();
+        setShowShareModal(false);
+      } else {
+        toast.error('Failed to update visibility');
+      }
+    } catch (error) {
+      console.error('Error updating visibility:', error);
+      toast.error('Failed to update workflow visibility');
+    } finally {
+      setSharingLoading(false);
+    }
+  };
+
+  const handleExportWorkflow = async () => {
+    if (!sharingWorkflow) return;
+    setSharingLoading(true);
+    try {
+      const response = await apiService.exportWorkflow(sharingWorkflow.id);
+      if (response.success) {
+        setExportedJson(JSON.stringify(response.data, null, 2));
+        toast.success('Workflow exported! Copy the JSON below.');
+      } else {
+        toast.error('Failed to export workflow');
+      }
+    } catch (error) {
+      console.error('Error exporting workflow:', error);
+      toast.error('Failed to export workflow');
+    } finally {
+      setSharingLoading(false);
+    }
+  };
+
+  const handleCopyExportedJson = () => {
+    if (exportedJson) {
+      navigator.clipboard.writeText(exportedJson);
+      toast.success('JSON copied to clipboard!');
+    }
+  };
+
+  const handleDownloadJson = () => {
+    if (exportedJson && sharingWorkflow) {
+      const blob = new Blob([exportedJson], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${sharingWorkflow.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_workflow.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Download started!');
     }
   };
 
@@ -469,6 +571,13 @@ const Workflows: React.FC = () => {
           </div>
           <div className="flex space-x-1">
             <button
+              onClick={() => openShareModal(workflow)}
+              className="p-1.5 text-gray-400 hover:text-purple-600 transition-colors rounded"
+              title="Share workflow"
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
+            <button
               onClick={() => {/* Handle edit */}}
               className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded"
             >
@@ -479,9 +588,6 @@ const Workflows: React.FC = () => {
               className="p-1.5 text-gray-400 hover:text-red-600 transition-colors rounded"
             >
               <Trash2 className="w-4 h-4" />
-            </button>
-            <button className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded">
-              <MoreVertical className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -610,7 +716,7 @@ const Workflows: React.FC = () => {
         </div>
 
         {/* Tab Navigation */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-1 mb-6">
+        <div className="workflows-tabs bg-white rounded-xl shadow-sm border border-gray-200 p-1 mb-6">
           <div className="flex space-x-1">
             <button
               onClick={() => setActiveTab('workflows')}
@@ -652,7 +758,7 @@ const Workflows: React.FC = () => {
         </div>
 
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className={`workflows-stats grid grid-cols-1 md:grid-cols-4 gap-4 mb-8`}>
           {activeTab === 'workflows' ? (
             <>
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
@@ -751,7 +857,7 @@ const Workflows: React.FC = () => {
         </div>
 
         {/* Filters and Search */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="workflows-filters bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4 flex-1">
               <div className="relative flex-1 max-w-md">
@@ -915,54 +1021,34 @@ const Workflows: React.FC = () => {
           </div>
         )}
 
-        {/* Execute Workflow Modal */}
+        {/* Execute Workflow Modal - Improved UX */}
         {showExecuteModal && executingWorkflow && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="p-2 bg-gradient-to-br from-green-500 to-blue-600 rounded-lg">
-                  <Play className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-semibold">Execute Workflow</h2>
-                  <p className="text-sm text-gray-600">"{executingWorkflow.name}"</p>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Input Data (JSON)</label>
-                  <textarea
-                    value={JSON.stringify(executeData.input_data, null, 2)}
-                    onChange={(e) => {
-                      try {
-                        const parsed = JSON.parse(e.target.value);
-                        setExecuteData({ ...executeData, input_data: parsed });
-                      } catch (error) {
-                        // Handle invalid JSON
-                      }
-                    }}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                    rows={6}
-                    placeholder="{}"
-                  />
-                </div>
-              </div>
-              <div className="flex items-center justify-end space-x-3 mt-6">
-                <button
-                  onClick={() => setShowExecuteModal(false)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleExecuteWorkflow}
-                  className="px-6 py-2 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg hover:from-green-700 hover:to-blue-700 transition-all duration-200"
-                >
-                  Execute Workflow
-                </button>
-              </div>
-            </div>
-          </div>
+          <ExecuteWorkflowModal
+            workflow={executingWorkflow}
+            isOpen={showExecuteModal}
+            onClose={() => {
+              setShowExecuteModal(false);
+              setExecutingWorkflow(null);
+            }}
+            onExecute={async (inputData) => {
+              try {
+                const response = await apiService.executeWorkflow(executingWorkflow.id, { 
+                  workflow_id: executingWorkflow.id, 
+                  input_data: inputData 
+                });
+                if (response.success) {
+                  toast.success('Workflow executed successfully');
+                  setShowExecuteModal(false);
+                  setExecutingWorkflow(null);
+                  loadWorkflows();
+                  loadExecutions();
+                }
+              } catch (error) {
+                console.error('Error executing workflow:', error);
+                toast.error('Failed to execute workflow');
+              }
+            }}
+          />
         )}
 
         {/* Workflow Details Modal */}
@@ -1198,9 +1284,193 @@ const Workflows: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Share Modal */}
+        {showShareModal && sharingWorkflow && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowShareModal(false)} />
+            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden">
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-600 to-pink-600">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <Share2 className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Share Workflow</h2>
+                    <p className="text-sm text-white/80">{sharingWorkflow.name}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowShareModal(false)}
+                  className="p-2 rounded-lg hover:bg-white/20 transition-colors"
+                >
+                  <X className="w-5 h-5 text-white" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+                {/* Visibility Options */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Visibility
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { value: 'private', label: 'Private', icon: Lock, desc: 'Only you can see' },
+                      { value: 'unlisted', label: 'Unlisted', icon: Link2, desc: 'Anyone with link' },
+                      { value: 'public', label: 'Public', icon: Globe, desc: 'Visible in gallery' },
+                      { value: 'marketplace', label: 'Marketplace', icon: Users, desc: 'Listed for others' },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => setShareVisibility(option.value as WorkflowVisibility)}
+                        className={`flex items-center space-x-3 p-3 border rounded-lg transition-all text-left ${
+                          shareVisibility === option.value
+                            ? 'border-purple-500 bg-purple-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className={`p-2 rounded-lg ${
+                          shareVisibility === option.value ? 'bg-purple-100' : 'bg-gray-100'
+                        }`}>
+                          <option.icon className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900 text-sm">{option.label}</p>
+                          <p className="text-xs text-gray-500">{option.desc}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Additional settings for public/marketplace */}
+                {(shareVisibility === 'public' || shareVisibility === 'marketplace') && (
+                  <div className="space-y-4 mb-6 p-4 bg-gray-50 rounded-lg">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Author Display Name
+                      </label>
+                      <input
+                        type="text"
+                        value={shareAuthorName}
+                        onChange={(e) => setShareAuthorName(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="Your name or username"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Category
+                      </label>
+                      <select
+                        value={shareCategory}
+                        onChange={(e) => setShareCategory(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      >
+                        <option value="">Select a category</option>
+                        <option value="Marketing">Marketing</option>
+                        <option value="Sales">Sales</option>
+                        <option value="Analytics">Analytics</option>
+                        <option value="Communication">Communication</option>
+                        <option value="Automation">Automation</option>
+                        <option value="Data">Data</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Tags (comma-separated)
+                      </label>
+                      <input
+                        type="text"
+                        value={shareTags}
+                        onChange={(e) => setShareTags(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="marketing, slack, reports"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Export Section */}
+                <div className="border-t border-gray-200 pt-6">
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">Export as JSON</h3>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Export this workflow as a JSON file that can be imported by others.
+                    Sensitive data will be automatically removed.
+                  </p>
+                  
+                  {exportedJson ? (
+                    <div className="space-y-3">
+                      <textarea
+                        readOnly
+                        value={exportedJson}
+                        className="w-full h-40 px-3 py-2 border border-gray-300 rounded-lg font-mono text-xs bg-gray-50"
+                      />
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={handleCopyExportedJson}
+                          className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                        >
+                          <Copy className="w-4 h-4" />
+                          <span>Copy</span>
+                        </button>
+                        <button
+                          onClick={handleDownloadJson}
+                          className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                        >
+                          <Download className="w-4 h-4" />
+                          <span>Download</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleExportWorkflow}
+                      disabled={sharingLoading}
+                      className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      {sharingLoading ? (
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4" />
+                      )}
+                      <span>Export Workflow</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-end space-x-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+                <button
+                  onClick={() => setShowShareModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpdateVisibility}
+                  disabled={sharingLoading}
+                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50"
+                >
+                  {sharingLoading ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Share2 className="w-4 h-4" />
+                  )}
+                  <span>Update Sharing</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-export default Workflows; 
+export default Workflows;

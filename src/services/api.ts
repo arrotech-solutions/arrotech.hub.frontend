@@ -1,49 +1,49 @@
 import axios, { AxiosInstance } from 'axios';
 import {
-  AgentCreate,
-  AgentResponse,
-  AgentStatusResponse,
-  ApiResponse,
-  APISettings,
-  ChatToolsResponse,
-  Connection,
-  ConnectionCreate,
-  ConnectionPlatform,
-  ConnectionUpdate,
-  ContentCreationResponse,
-  Conversation,
-  ConversationCreate,
-  DashboardSettings,
-  ImageGenerationResponse,
-  IntegrationSettings,
-  LLMProviderResponse,
-  MCPTool,
-  Message,
-  MessageCreate,
-  MpesaPaymentRequest,
-  NotificationSettings,
-  Payment,
-  PaymentVerificationRequest,
-  PDFGenerationResponse,
-  PricingTiers,
-  SecuritySettings,
-  ServerInfo,
-  ServerStatus,
-  ShortLinkResponse,
-  StripeCustomerRequest,
-  StripePaymentRequest,
-  Subscription,
-  ToolInfo,
-  UsageLog,
-  User,
-  UserSettings,
-  UserSettingsUpdate,
-  WebScrapingResponse,
-  // New types for enhanced features
-  Workflow,
-  WorkflowCreateRequest,
-  WorkflowExecuteRequest,
-  WorkflowTemplate
+    AgentCreate,
+    AgentResponse,
+    AgentStatusResponse,
+    ApiResponse,
+    APISettings,
+    ChatToolsResponse,
+    Connection,
+    ConnectionCreate,
+    ConnectionPlatform,
+    ConnectionUpdate,
+    ContentCreationResponse,
+    Conversation,
+    ConversationCreate,
+    DashboardSettings,
+    ImageGenerationResponse,
+    IntegrationSettings,
+    LLMProviderResponse,
+    MCPTool,
+    Message,
+    MessageCreate,
+    MpesaPaymentRequest,
+    NotificationSettings,
+    Payment,
+    PaymentVerificationRequest,
+    PDFGenerationResponse,
+    PricingTiers,
+    SecuritySettings,
+    ServerInfo,
+    ServerStatus,
+    ShortLinkResponse,
+    StripeCustomerRequest,
+    StripePaymentRequest,
+    Subscription,
+    ToolInfo,
+    UsageLog,
+    User,
+    UserSettings,
+    UserSettingsUpdate,
+    WebScrapingResponse,
+    // New types for enhanced features
+    Workflow,
+    WorkflowCreateRequest,
+    WorkflowExecuteRequest,
+    WorkflowTemplate
 } from '../types';
 
 class ApiService {
@@ -52,7 +52,7 @@ class ApiService {
   constructor() {
     // Ensure HTTPS is always used in production
     const getBaseURL = () => {
-      const defaultURL = 'https://mini-hub.fly.dev';
+      const defaultURL = 'http://localhost:8000';
       return defaultURL;
     };
 
@@ -636,6 +636,48 @@ class ApiService {
 
   async createChatAgent(data: WorkflowCreateRequest): Promise<ApiResponse<any>> {
     const response = await this.api.post('/workflows/chat-agent', data);
+    return response.data;
+  }
+
+  // Workflow extraction from conversation endpoints
+  async getConversationToolCalls(conversationId: number): Promise<ApiResponse<any>> {
+    const response = await this.api.get(`/workflows/conversation/${conversationId}/tool-calls`);
+    return response.data;
+  }
+
+  async extractWorkflowFromConversation(data: {
+    conversation_id: number;
+    workflow_name: string;
+    description?: string;
+    selected_step_ids?: string[];
+    parameterize_fields?: string[];
+    trigger_type?: string;
+    trigger_config?: Record<string, any>;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/workflows/extract-from-conversation', data);
+    return response.data;
+  }
+
+  async createWorkflowFromSteps(data: {
+    workflow_name: string;
+    description: string;
+    steps: Array<{
+      step_number: number;
+      tool_name: string;
+      tool_parameters: Record<string, any>;
+      description?: string;
+      condition?: any;
+      retry_config?: { max_retries: number; retry_delay: number };
+      timeout?: number;
+    }>;
+    trigger_type?: string;
+    trigger_config?: Record<string, any>;
+    variables?: Record<string, any>;
+  }): Promise<ApiResponse<any>> {
+    console.log('[API] createWorkflowFromSteps request:', data);
+    const response = await this.api.post('/workflows/create-from-steps', data);
+    console.log('[API] createWorkflowFromSteps raw response:', response);
+    console.log('[API] createWorkflowFromSteps response.data:', response.data);
     return response.data;
   }
 
@@ -1483,66 +1525,6 @@ class ApiService {
     return response.data;
   }
 
-  // ACC Ambient Agent endpoints
-  async startACCAmbientAgent(projectId: string, callbackUrl: string): Promise<ApiResponse<any>> {
-    const response = await this.api.post('/agents/acc-ambient/start', {
-      project_id: projectId,
-      callback_url: callbackUrl
-    });
-    return response.data;
-  }
-
-  async stopACCAmbientAgent(): Promise<ApiResponse<any>> {
-    const response = await this.api.post('/agents/acc-ambient/stop');
-    return response.data;
-  }
-
-  async getACCIssues(projectId: string): Promise<ApiResponse<any>> {
-    const response = await this.api.post('/mcp/call', {
-      name: 'acc_get_issues',
-      arguments: {
-        project_id: projectId
-      }
-    });
-    return response.data;
-  }
-
-  async getACCProjects(): Promise<ApiResponse<any>> {
-    const response = await this.api.post('/mcp/call', {
-      name: 'acc_get_projects',
-      arguments: {}
-    });
-    return response.data;
-  }
-
-  async getACCHubs(): Promise<ApiResponse<any>> {
-    const response = await this.api.post('/mcp/call', {
-      name: 'acc_get_hubs',
-      arguments: {}
-    });
-    return response.data;
-  }
-
-  async createACCIssue(data: any): Promise<ApiResponse<any>> {
-    const response = await this.api.post('/mcp/call', {
-      name: 'acc_create_issue',
-      arguments: data
-    });
-    return response.data;
-  }
-
-  async getACCWebhookStatus(): Promise<ApiResponse<any>> {
-    const response = await this.api.get('/agents/acc-ambient/status');
-    return response.data;
-  }
-
-  async getACCAnalytics(timeframe?: string): Promise<ApiResponse<any>> {
-    const response = await this.api.get('/analytics/acc', {
-      params: timeframe ? { timeframe } : {}
-    });
-    return response.data;
-  }
-
   // Salesforce endpoints
   async testSalesforceConnection(config: any): Promise<ApiResponse<any>> {
     const response = await this.api.post('/connections/test-salesforce', config);
@@ -1597,7 +1579,349 @@ class ApiService {
     const response = await this.api.post('/connections/salesforce/contacts/sync-hubspot', { hubspot_contacts: hubspotContacts });
     return response.data;
   }
+
+  // ==================== Marketplace API ====================
+
+  async browseMarketplace(params?: {
+    category?: string;
+    search?: string;
+    sort_by?: 'downloads' | 'rating' | 'newest';
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.api.get('/marketplace/browse', { params });
+    return response.data;
+  }
+
+  async getMarketplaceCategories(): Promise<ApiResponse<any>> {
+    const response = await this.api.get('/marketplace/categories');
+    return response.data;
+  }
+
+  async getWorkflowByShareCode(shareCode: string): Promise<ApiResponse<any>> {
+    const response = await this.api.get(`/marketplace/workflow/${shareCode}`);
+    return response.data;
+  }
+
+  async exportWorkflow(workflowId: number): Promise<ApiResponse<any>> {
+    const response = await this.api.post(`/marketplace/workflow/${workflowId}/export`);
+    return response.data;
+  }
+
+  async importWorkflow(data: { workflow_data: any; source_workflow_id?: number }): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/marketplace/workflow/import', data);
+    return response.data;
+  }
+
+  async updateWorkflowVisibility(workflowId: number, data: {
+    visibility: string;
+    license_type?: string;
+    price?: number;
+    currency?: string;
+    category?: string;
+    tags?: string[];
+    author_name?: string;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.api.put(`/marketplace/workflow/${workflowId}/visibility`, data);
+    return response.data;
+  }
+
+  async getWorkflowReviews(workflowId: number, limit?: number, offset?: number): Promise<ApiResponse<any>> {
+    const params: any = {};
+    if (limit) params.limit = limit;
+    if (offset) params.offset = offset;
+    const response = await this.api.get(`/marketplace/workflow/${workflowId}/reviews`, { params });
+    return response.data;
+  }
+
+  async addWorkflowReview(workflowId: number, data: { rating: number; title?: string; comment?: string }): Promise<ApiResponse<any>> {
+    const response = await this.api.post(`/marketplace/workflow/${workflowId}/review`, data);
+    return response.data;
+  }
+
+  async getMySharedWorkflows(): Promise<ApiResponse<any>> {
+    const response = await this.api.get('/marketplace/my-shared');
+    return response.data;
+  }
+
+  async getMyDownloads(): Promise<ApiResponse<any>> {
+    const response = await this.api.get('/marketplace/my-downloads');
+    return response.data;
+  }
+
+  // ================== Creator Profile API ==================
+
+  async getMyCreatorProfile(): Promise<ApiResponse<any>> {
+    const response = await this.api.get('/creators/me');
+    return response.data;
+  }
+
+  async createOrUpdateCreatorProfile(data: {
+    display_name: string;
+    bio?: string;
+    avatar_url?: string;
+    website?: string;
+    github_url?: string;
+    twitter_url?: string;
+    linkedin_url?: string;
+    is_public?: boolean;
+    accept_donations?: boolean;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/creators/me', data);
+    return response.data;
+  }
+
+  async getCreatorProfile(creatorId: number): Promise<ApiResponse<any>> {
+    const response = await this.api.get(`/creators/${creatorId}`);
+    return response.data;
+  }
+
+  async getCreatorWorkflows(creatorId: number, limit?: number, offset?: number): Promise<ApiResponse<any>> {
+    const params: any = {};
+    if (limit) params.limit = limit;
+    if (offset) params.offset = offset;
+    const response = await this.api.get(`/creators/${creatorId}/workflows`, { params });
+    return response.data;
+  }
+
+  async getTopCreators(limit?: number, sortBy?: 'downloads' | 'rating' | 'workflows'): Promise<ApiResponse<any>> {
+    const params: any = {};
+    if (limit) params.limit = limit;
+    if (sortBy) params.sort_by = sortBy;
+    const response = await this.api.get('/creators/top', { params });
+    return response.data;
+  }
+
+  async refreshCreatorStats(): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/creators/me/refresh-stats');
+    return response.data;
+  }
+
+  // ================== Follower API ==================
+
+  async followCreator(creatorId: number): Promise<ApiResponse<any>> {
+    const response = await this.api.post(`/creators/${creatorId}/follow`);
+    return response.data;
+  }
+
+  async unfollowCreator(creatorId: number): Promise<ApiResponse<any>> {
+    const response = await this.api.delete(`/creators/${creatorId}/follow`);
+    return response.data;
+  }
+
+  async checkFollowing(creatorId: number): Promise<ApiResponse<any>> {
+    const response = await this.api.get(`/creators/${creatorId}/is-following`);
+    return response.data;
+  }
+
+  async getMyFollowers(limit?: number, offset?: number): Promise<ApiResponse<any>> {
+    const params: any = {};
+    if (limit) params.limit = limit;
+    if (offset) params.offset = offset;
+    const response = await this.api.get('/creators/me/followers', { params });
+    return response.data;
+  }
+
+  async getMyFollowing(limit?: number, offset?: number): Promise<ApiResponse<any>> {
+    const params: any = {};
+    if (limit) params.limit = limit;
+    if (offset) params.offset = offset;
+    const response = await this.api.get('/creators/me/following', { params });
+    return response.data;
+  }
+
+  async getActivityFeed(limit?: number, offset?: number): Promise<ApiResponse<any>> {
+    const params: any = {};
+    if (limit) params.limit = limit;
+    if (offset) params.offset = offset;
+    const response = await this.api.get('/creators/me/activity-feed', { params });
+    return response.data;
+  }
+
+  // ================== Analytics API ==================
+
+  async trackAnalyticsEvent(workflowId: number, eventType: string): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/analytics/track', {
+      workflow_id: workflowId,
+      event_type: eventType,
+    });
+    return response.data;
+  }
+
+  async getMarketplaceWorkflowAnalytics(workflowId: number, days?: number): Promise<ApiResponse<any>> {
+    const params: any = {};
+    if (days) params.days = days;
+    const response = await this.api.get(`/analytics/workflow/${workflowId}`, { params });
+    return response.data;
+  }
+
+  async getMyWorkflowsAnalytics(days?: number): Promise<ApiResponse<any>> {
+    const params: any = {};
+    if (days) params.days = days;
+    const response = await this.api.get('/analytics/my-workflows', { params });
+    return response.data;
+  }
+
+  async getTrendingWorkflows(days?: number, limit?: number): Promise<ApiResponse<any>> {
+    const params: any = {};
+    if (days) params.days = days;
+    if (limit) params.limit = limit;
+    const response = await this.api.get('/analytics/trending', { params });
+    return response.data;
+  }
+
+  // ================== Notifications API ==================
+
+  async getNotifications(unreadOnly?: boolean, limit?: number, offset?: number): Promise<ApiResponse<any>> {
+    const params: any = {};
+    if (unreadOnly !== undefined) params.unread_only = unreadOnly;
+    if (limit) params.limit = limit;
+    if (offset) params.offset = offset;
+    const response = await this.api.get('/notifications', { params });
+    return response.data;
+  }
+
+  async getUnreadNotificationCount(): Promise<ApiResponse<any>> {
+    const response = await this.api.get('/notifications/unread-count');
+    return response.data;
+  }
+
+  async markNotificationAsRead(notificationId: number): Promise<ApiResponse<any>> {
+    const response = await this.api.put(`/notifications/${notificationId}/read`);
+    return response.data;
+  }
+
+  async markAllNotificationsAsRead(): Promise<ApiResponse<any>> {
+    const response = await this.api.put('/notifications/read-all');
+    return response.data;
+  }
+
+  async deleteNotification(notificationId: number): Promise<ApiResponse<any>> {
+    const response = await this.api.delete(`/notifications/${notificationId}`);
+    return response.data;
+  }
+
+  // ================== Templates API ==================
+
+  async getTemplates(params?: {
+    category?: string;
+    difficulty?: string;
+    search?: string;
+    connection?: string;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.api.get('/templates', { params });
+    return response.data;
+  }
+
+  async getTemplateCategories(): Promise<ApiResponse<any>> {
+    const response = await this.api.get('/templates/categories');
+    return response.data;
+  }
+
+  async getTemplate(templateId: string): Promise<ApiResponse<any>> {
+    const response = await this.api.get(`/templates/${templateId}`);
+    return response.data;
+  }
+
+  async useTemplate(templateId: string): Promise<ApiResponse<any>> {
+    const response = await this.api.post(`/templates/${templateId}/use`);
+    return response.data;
+  }
+
+  async getFeaturedTemplates(): Promise<ApiResponse<any>> {
+    const response = await this.api.get('/templates/featured/list');
+    return response.data;
+  }
+
+  async getPopularTemplates(): Promise<ApiResponse<any>> {
+    const response = await this.api.get('/templates/stats/popular');
+    return response.data;
+  }
+
+  // ================== Payment/Purchase API ==================
+
+  async purchaseWorkflow(workflowId: number, paymentMethod: string, phoneNumber?: string): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/payments/workflow/purchase', {
+      workflow_id: workflowId,
+      payment_method: paymentMethod,
+      phone_number: phoneNumber,
+    });
+    return response.data;
+  }
+
+  async getMyPurchases(): Promise<ApiResponse<any>> {
+    const response = await this.api.get('/payments/my-purchases');
+    return response.data;
+  }
+
+  async getCreatorEarnings(): Promise<ApiResponse<any>> {
+    const response = await this.api.get('/payments/creator/earnings');
+    return response.data;
+  }
+
+  // ================== Favorites API ==================
+
+  async getMyFavorites(limit?: number, offset?: number): Promise<ApiResponse<any>> {
+    const params: any = {};
+    if (limit) params.limit = limit;
+    if (offset) params.offset = offset;
+    const response = await this.api.get('/favorites', { params });
+    return response.data;
+  }
+
+  async addToFavorites(workflowId: number): Promise<ApiResponse<any>> {
+    const response = await this.api.post(`/favorites/${workflowId}`);
+    return response.data;
+  }
+
+  async removeFromFavorites(workflowId: number): Promise<ApiResponse<any>> {
+    const response = await this.api.delete(`/favorites/${workflowId}`);
+    return response.data;
+  }
+
+  async checkFavorite(workflowId: number): Promise<ApiResponse<any>> {
+    const response = await this.api.get(`/favorites/${workflowId}/check`);
+    return response.data;
+  }
+
+  // ================== Preferences API ==================
+
+  async getPreferences(): Promise<ApiResponse<any>> {
+    const response = await this.api.get('/preferences');
+    return response.data;
+  }
+
+  async updatePreferences(preferences: Record<string, any>): Promise<ApiResponse<any>> {
+    const response = await this.api.put('/preferences', preferences);
+    return response.data;
+  }
+
+  async updateEmailNotificationPreferences(settings: {
+    email_on_download?: boolean;
+    email_on_sale?: boolean;
+    email_on_review?: boolean;
+    email_on_follower?: boolean;
+    email_weekly_summary?: boolean;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.api.put('/preferences/notifications/email', null, { params: settings });
+    return response.data;
+  }
+
+  async updateInAppNotificationPreferences(settings: {
+    notify_on_download?: boolean;
+    notify_on_sale?: boolean;
+    notify_on_review?: boolean;
+    notify_on_follower?: boolean;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.api.put('/preferences/notifications/in-app', null, { params: settings });
+    return response.data;
+  }
+
+  async updateTheme(theme: 'light' | 'dark' | 'system'): Promise<ApiResponse<any>> {
+    const response = await this.api.put('/preferences/theme', null, { params: { theme } });
+    return response.data;
+  }
 }
 
 export const apiService = new ApiService();
-export default apiService; 
+export default apiService;

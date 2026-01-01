@@ -1,6 +1,7 @@
 import {
     Activity,
-    Bell,
+    Award,
+    BookOpen,
     Bot,
     ChevronDown,
     ChevronRight,
@@ -8,12 +9,14 @@ import {
     Crown,
     Database,
     Globe,
+    Heart,
     Home,
     LogOut,
     Menu,
     MessageCircle,
     Search,
     Settings,
+    ShoppingBag,
     Sparkles,
     User,
     Workflow,
@@ -23,6 +26,7 @@ import {
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import NotificationsDropdown from './NotificationsDropdown';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -63,6 +67,34 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       href: '/agents', 
       icon: Bot,
       description: 'AI agents management',
+      badge: null
+    },
+    { 
+      name: 'Marketplace', 
+      href: '/marketplace', 
+      icon: ShoppingBag,
+      description: 'Share and discover workflows',
+      badge: 'New'
+    },
+    {
+      name: 'Templates',
+      href: '/templates',
+      icon: BookOpen,
+      description: 'Pre-built workflow templates',
+      badge: 'New'
+    },
+    {
+      name: 'Favorites',
+      href: '/favorites',
+      icon: Heart,
+      description: 'Saved workflows',
+      badge: null
+    },
+    {
+      name: 'Creator Profile',
+      href: '/creator-profile',
+      icon: Award,
+      description: 'Manage your creator profile',
       badge: null
     },
     { 
@@ -390,10 +422,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
             
             <div className="flex items-center space-x-4">
-              <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative">
-                <Bell className="w-5 h-5 text-gray-600" />
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-              </button>
+              <NotificationsDropdown />
               
               {/* User Dropdown */}
               <div className="relative user-dropdown">

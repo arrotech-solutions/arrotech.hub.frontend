@@ -8,6 +8,7 @@ import {
     ChevronDown,
     ChevronRight,
     Clock,
+    Copy,
     Cpu,
     Edit,
     Eye,
@@ -23,6 +24,7 @@ import {
     Plus,
     Search,
     Settings,
+    Share2,
     Shield,
     Trash2,
     Users,
@@ -32,7 +34,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import apiService from '../services/api';
-import { ACCAmbientAgentStatus, ACCAnalytics, AgentCreate, AgentResponse, AgentStatusResponse, Workflow } from '../types';
+import { AgentCreate, AgentResponse, AgentStatusResponse, Workflow } from '../types';
 
 const Agents: React.FC = () => {
   const [agents, setAgents] = useState<AgentResponse[]>([]);
@@ -56,49 +58,10 @@ const Agents: React.FC = () => {
     completed: 0
   });
 
-  // ACC Ambient Agent state
-  const [accStatus, setAccStatus] = useState<ACCAmbientAgentStatus | null>(null);
-  const [accAnalytics, setAccAnalytics] = useState<ACCAnalytics | null>(null);
-  const [showACCModal, setShowACCModal] = useState(false);
-  const [projectId, setProjectId] = useState<string>('');
-  const [callbackUrl, setCallbackUrl] = useState('https://15a2e6bfcc71.ngrok-free.app');
-
   useEffect(() => {
     loadAgents();
     loadWorkflows();
-    loadACCData();
-
-    // Set up periodic status polling for ACC agent
-    const statusInterval = setInterval(() => {
-      loadACCData();
-    }, 30000); // Check every 30 seconds
-
-    return () => clearInterval(statusInterval);
   }, []);
-
-  const loadACCData = async () => {
-    try {
-      // Load ACC ambient agent status
-      console.log('🔄 Loading ACC ambient agent status...');
-      const statusRes = await apiService.getACCWebhookStatus();
-      console.log('📊 ACC status response:', statusRes);
-      
-      if (statusRes.success) {
-        console.log('✅ ACC status data:', statusRes.data);
-        setAccStatus(statusRes.data);
-      } else {
-        console.log('❌ ACC status failed:', statusRes);
-      }
-
-      // Load ACC analytics
-      const analyticsRes = await apiService.getACCAnalytics('7d');
-      if (analyticsRes.success) {
-        setAccAnalytics(analyticsRes.data);
-      }
-    } catch (error) {
-      console.log('ACC data not available:', error);
-    }
-  };
 
   useEffect(() => {
     // Calculate stats when agents change
@@ -133,6 +96,23 @@ const Agents: React.FC = () => {
       }
     } catch (error) {
       console.error('Error loading workflows:', error);
+    }
+  };
+
+  const handleShareAgent = async (agent: AgentResponse) => {
+    try {
+      // Export the workflow (which includes agent configuration)
+      const response = await apiService.exportWorkflow(agent.workflow_id);
+      if (response.success) {
+        const jsonStr = JSON.stringify(response.data, null, 2);
+        await navigator.clipboard.writeText(jsonStr);
+        toast.success('Agent configuration copied to clipboard! Share this JSON with others.');
+      } else {
+        toast.error('Failed to export agent configuration');
+      }
+    } catch (error) {
+      console.error('Error sharing agent:', error);
+      toast.error('Failed to share agent');
     }
   };
 
@@ -219,53 +199,6 @@ const Agents: React.FC = () => {
     }
   };
 
-  // ACC Ambient Agent management
-  const handleStartACCAgent = async () => {
-    if (!projectId.trim()) {
-      toast.error('Please enter a project ID');
-      return;
-    }
-
-    try {
-      console.log('🚀 Starting ACC ambient agent with:', { projectId: projectId.trim(), callbackUrl });
-      const response = await apiService.startACCAmbientAgent(projectId.trim(), callbackUrl);
-      console.log('🚀 Start ACC agent response:', response);
-      
-      if (response.success) {
-        toast.success('ACC Ambient Agent started successfully');
-        setShowACCModal(false);
-        setProjectId(''); // Clear the form
-        
-        // Refresh status with a slight delay to allow backend to update
-        setTimeout(() => loadACCData(), 1000);
-      } else {
-        toast.error(response.message || 'Failed to start ACC ambient agent');
-      }
-    } catch (error) {
-      console.error('Error starting ACC agent:', error);
-      toast.error('Failed to start ACC ambient agent');
-    }
-  };
-
-  const handleStopACCAgent = async () => {
-    try {
-      console.log('⏹️ Stopping ACC ambient agent...');
-      const response = await apiService.stopACCAmbientAgent();
-      console.log('⏹️ Stop ACC agent response:', response);
-      
-      if (response.success) {
-        toast.success('ACC Ambient Agent stopped successfully');
-        
-        // Refresh status with a slight delay to allow backend to update
-        setTimeout(() => loadACCData(), 1000);
-      } else {
-        toast.error(response.message || 'Failed to stop ACC ambient agent');
-      }
-    } catch (error) {
-      console.error('Error stopping ACC agent:', error);
-      toast.error('Failed to stop ACC ambient agent');
-    }
-  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -428,6 +361,13 @@ const Agents: React.FC = () => {
           </div>
           <div className="flex space-x-1">
             <button
+              onClick={() => handleShareAgent(agent)}
+              className="p-1.5 text-gray-400 hover:text-purple-600 transition-colors rounded"
+              title="Share Agent"
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
+            <button
               onClick={() => {/* Handle edit */}}
               className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded"
             >
@@ -520,8 +460,15 @@ const Agents: React.FC = () => {
                 <Eye className="w-3 h-3" />
                 <span>View</span>
               </button>
-                              <button
-                  onClick={() => handleDeleteAgent(agent.agent_id)}
+              <button
+                onClick={() => handleShareAgent(agent)}
+                className="p-1.5 text-gray-400 hover:text-purple-600 transition-colors rounded"
+                title="Share Agent"
+              >
+                <Share2 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleDeleteAgent(agent.agent_id)}
                 className="p-1.5 text-gray-400 hover:text-red-600 transition-colors rounded"
               >
                 <Trash2 className="w-4 h-4" />
@@ -560,148 +507,6 @@ const Agents: React.FC = () => {
           </div>
         </div>
 
-        {/* ACC Ambient Agent Section */}
-        <div className="acc-ambient-section bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl p-6 shadow-sm border border-orange-200/50 mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl">
-                <HardHat className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">ACC Ambient Agent</h2>
-                <p className="text-gray-600">Intelligent monitoring for Autodesk Construction Cloud issues</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              {/* Debug info */}
-              <div className="text-xs text-gray-500 mr-2">
-                Status: {accStatus?.is_active ? '✅ Active' : '❌ Inactive'} 
-                {accStatus?.status && ` (${accStatus.status})`}
-              </div>
-              
-              {accStatus?.is_active ? (
-                <button
-                  onClick={handleStopACCAgent}
-                  className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm"
-                >
-                  <Pause className="w-4 h-4" />
-                  <span>Stop Agent</span>
-                </button>
-              ) : (
-                <button
-                  onClick={() => setShowACCModal(true)}
-                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-lg hover:from-orange-700 hover:to-red-700 transition-all duration-200 shadow-sm"
-                >
-                  <Play className="w-4 h-4" />
-                  <span>Start Agent</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* ACC Agent Status Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white rounded-lg p-4 border border-orange-200/50">
-              <div className="flex items-center space-x-2 mb-2">
-                <div className={`w-3 h-3 rounded-full ${accStatus?.is_active ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                <span className="text-sm font-medium text-gray-700">Agent Status</span>
-              </div>
-              <p className="text-lg font-bold text-gray-900">
-                {accStatus?.is_active ? 'Active' : 'Inactive'}
-              </p>
-              <p className="text-xs text-gray-500">
-                {accStatus?.components?.issue_monitoring?.project_id 
-                  ? `Project: ${accStatus.components.issue_monitoring.project_id.slice(0, 8)}...` 
-                  : accStatus?.project_id 
-                    ? `Project: ${accStatus.project_id.slice(0, 8)}...`
-                    : 'No project selected'}
-              </p>
-              {accStatus?.uptime_seconds && (
-                <p className="text-xs text-green-600">
-                  Uptime: {Math.floor(accStatus.uptime_seconds / 60)}m
-                </p>
-              )}
-            </div>
-            
-            <div className="bg-white rounded-lg p-4 border border-orange-200/50">
-              <div className="flex items-center space-x-2 mb-2">
-                <HardHat className="w-4 h-4 text-orange-600" />
-                <span className="text-sm font-medium text-gray-700">Issues Monitored</span>
-              </div>
-              <p className="text-lg font-bold text-gray-900">
-                {accStatus?.components?.issue_monitoring?.issues_processed || accStatus?.issues_processed || 0}
-              </p>
-              <p className="text-xs text-gray-500">Total processed</p>
-            </div>
-            
-            <div className="bg-white rounded-lg p-4 border border-orange-200/50">
-              <div className="flex items-center space-x-2 mb-2">
-                <GitBranch className="w-4 h-4 text-yellow-600" />
-                <span className="text-sm font-medium text-gray-700">Duplicates</span>
-              </div>
-              <p className="text-lg font-bold text-gray-900">
-                {accStatus?.components?.issue_monitoring?.duplicates_detected || accStatus?.duplicates_detected || 0}
-              </p>
-              <p className="text-xs text-gray-500">Duplicates detected</p>
-            </div>
-            
-            <div className="bg-white rounded-lg p-4 border border-orange-200/50">
-              <div className="flex items-center space-x-2 mb-2">
-                <AlertTriangle className="w-4 h-4 text-red-600" />
-                <span className="text-sm font-medium text-gray-700">Incomplete</span>
-              </div>
-              <p className="text-lg font-bold text-gray-900">
-                {accStatus?.components?.issue_monitoring?.incomplete_issues || accStatus?.incomplete_issues || 0}
-              </p>
-              <p className="text-xs text-gray-500">Missing information</p>
-            </div>
-          </div>
-
-          {/* Key Features */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-lg p-4 border border-orange-200/50">
-              <h3 className="text-lg font-semibold mb-3 flex items-center space-x-2">
-                <Shield className="w-5 h-5 text-green-600" />
-                <span>Real-time Monitoring</span>
-              </h3>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                  <span>Webhook-based instant notifications</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                  <span>Duplicate issue detection using AI</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                  <span>Information completeness validation</span>
-                </li>
-              </ul>
-            </div>
-            
-            <div className="bg-white rounded-lg p-4 border border-orange-200/50">
-              <h3 className="text-lg font-semibold mb-3 flex items-center space-x-2">
-                <Users className="w-5 h-5 text-blue-600" />
-                <span>Slack Integration</span>
-              </h3>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                  <span>Alerts to #acc-alerts channel</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                  <span>Notifications to #acc-management</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                  <span>Comprehensive issue details</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
 
         {/* Stats Overview */}
         <div className="agents-stats grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -1005,76 +810,6 @@ const Agents: React.FC = () => {
           </div>
         )}
 
-        {/* ACC Start Agent Modal */}
-        {showACCModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="p-2 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg">
-                  <HardHat className="w-5 h-5 text-white" />
-                </div>
-                <h2 className="text-xl font-semibold">Start ACC Ambient Agent</h2>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">ACC Project ID</label>
-                  <input
-                    type="text"
-                    value={projectId}
-                    onChange={(e) => setProjectId(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent font-mono text-sm"
-                    placeholder="a9d0e667-0611-44ea-ab8e-82b4884a8223"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Enter the ACC project ID to monitor for new issues
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Webhook Callback URL</label>
-                  <input
-                    type="text"
-                    value={callbackUrl}
-                    onChange={(e) => setCallbackUrl(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent font-mono text-sm"
-                    placeholder="https://your-webhook-url.com"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    URL where ACC will send webhook notifications
-                  </p>
-                </div>
-
-                <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
-                  <h4 className="text-sm font-medium text-orange-800 mb-2">What will the agent do?</h4>
-                  <ul className="text-xs text-orange-700 space-y-1">
-                    <li>• Monitor for new issues in real-time</li>
-                    <li>• Detect duplicate issues using AI analysis</li>
-                    <li>• Validate issue completeness and quality</li>
-                    <li>• Send alerts to Slack channels automatically</li>
-                    <li>• Route notifications based on issue status</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end space-x-3 mt-6">
-                <button
-                  onClick={() => setShowACCModal(false)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleStartACCAgent}
-                  disabled={!projectId.trim()}
-                  className="px-6 py-2 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-lg hover:from-orange-700 hover:to-red-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Start Agent
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
