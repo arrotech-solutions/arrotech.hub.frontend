@@ -41,7 +41,6 @@ interface PasswordChangeData {
 
 const Profile: React.FC = () => {
   const { user, updateUser } = useAuth();
-  const [] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);

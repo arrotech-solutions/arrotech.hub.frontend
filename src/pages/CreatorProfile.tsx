@@ -40,7 +40,6 @@ const CreatorProfile: React.FC = () => {
   const [followingCount, setFollowingCount] = useState(0);
   const [followingList, setFollowingList] = useState<Following[]>([]);
   const [activityFeed, setActivityFeed] = useState<ActivityFeedItem[]>([]);
-  const [] = useState<'overview' | 'following' | 'activity'>('overview');
   
   // Edit form state
   const [editForm, setEditForm] = useState({

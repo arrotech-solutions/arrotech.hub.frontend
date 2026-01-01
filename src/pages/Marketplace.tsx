@@ -42,7 +42,6 @@ const Marketplace: React.FC = () => {
   const [myDownloads, setMyDownloads] = useState<any[]>([]);
   
   // Modal states
-  const [] = useState<MarketplaceWorkflow | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importData, setImportData] = useState('');
   const [importLoading, setImportLoading] = useState(false);

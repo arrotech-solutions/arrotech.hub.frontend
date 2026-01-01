@@ -72,7 +72,7 @@ const Workflows: React.FC = () => {
     description: '',
     name: ''
   });
-  const [executeData, setExecuteData] = useState<WorkflowExecuteRequest>({
+  const [, setExecuteData] = useState<WorkflowExecuteRequest>({
     workflow_id: 0,
     input_data: {}
   });

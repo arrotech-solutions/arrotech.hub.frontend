@@ -16,7 +16,6 @@ const MCPTools: React.FC = () => {
   const [toolParams, setToolParams] = useState<Record<string, any>>({});
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [] = useState<'all' | 'dynamic' | 'user'>('all');
   const [categories, setCategories] = useState<string[]>(['all']);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingStatus, setStreamingStatus] = useState<string>('');
